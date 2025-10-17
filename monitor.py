@@ -4,6 +4,10 @@ import re
 import sqlite3
 import queue
 import threading
+import requests
+import shutil
+import json
+import hashlib
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Optional, Dict
@@ -21,6 +25,7 @@ with open(CONFIG_PATH, "r") as f:
     CFG = yaml.safe_load(f)
 
 WATCH_PATH = os.path.abspath(CFG["watch_path"])
+QUARANTINE_PATH = os.path.abspath(CFG.get["quarantine_path"])
 STABILITY_SECONDS = float(CFG.get("stability_seconds", 3))
 DEBOUNCE_MS = int(CFG.get("debounce_ms", 500))
 MIN_SIZE = int(CFG.get("min_size_bytes", 1))
@@ -95,7 +100,6 @@ def size_ok(path: str) -> bool:
     return MIN_SIZE <= size <= MAX_SIZE
 
 def compute_sha256(path: str, chunk_size: int = 1024*64) -> str:
-    import hashlib
     h = hashlib.sha256()
     with open(path, "rb") as f:
         while True:
@@ -109,6 +113,30 @@ def priority_for_path(path: str) -> int:
     _, ext = os.path.splitext(path)
     return int(PRIORITY_MAP.get(ext.lower(), 1))
 
+def Quarantine(path: str):
+    if not QUARANTINE_PATH:
+        print(f"No quarantine path set; cannot quarantine {path}")
+        return
+    try:
+        os.replace(path, QUARANTINE_PATH)
+    except OSError:
+        shutil.move(path,QUARANTINE_PATH)
+    try:
+        path.chmod(0o600)  # read write for owner only
+    except Exception as e:
+        print(f"Failed to set read-only permissions on {path}: {e}")
+    timestamp = time.time()
+    meta = {
+            "original_path": str(path),
+            "quarantined_path": str(QUARANTINE_PATH),
+            "timestamp": timestamp,
+            "action": "quarantine",
+        }
+    meta_path = path.with_suffix(path.suffix + ".meta.json")
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(meta, f)
+
+    print(f"Quarantined {path} to {QUARANTINE_PATH}")
 #-------------------------------------------------------------------------------
 # Debounce and Stability
 #-------------------------------------------------------------------------------
@@ -228,7 +256,7 @@ def enqueue_if_passes_filters(pth: str, out_queue: "queue.PriorityQueue"):
         return
     if verdict == "malicious":
         print(f"CACHE HIT malicious {p}")
-        # Add quarantine logic here later
+        Quarantine(p)
         return
      # Push into worker queue with priority
     prio = -priority_for_path(p)  # PriorityQueue returns smallest first; invert to get high-prio first
@@ -246,7 +274,13 @@ def worker_process_item(item):
     """
     prio, ts, path, hash = item
     print(f"WORKER START {path} hash= {hash}")
-    verdict = API_lookup_hash(hash)
+    MBverdict = MB_API_lookup_hash(hash)
+    verdict2 = CP_API_lookup_hash(hash) # change to second API lookup specific
+    # Combine verdicts (simple logic: if either says malicious, it's malicious)
+    if MBverdict == "malicious" or verdict2 == "malicious":
+        verdict = "malicious"
+    else:
+        verdict = "clean"
     cache_store(hash, verdict)
     if verdict == "malicious":
         print(f"VERDICT malicious {path}")
@@ -254,7 +288,31 @@ def worker_process_item(item):
     if verdict == "clean":
         print(f"VERDICT clean {path}")
     
-def API_lookup_hash(hash_hex: str) -> str:
+def MB_API_lookup_hash(hash_hex: str) -> str: # MalwareBazaar API lookup
+    auth_key = os.getenv("MalwareBazaar_Auth_KEY")
+    url = os.getenv("MalwareBazaar_Url")
+    if not auth_key or not url:
+        raise ValueError("MalwareBazaar API key or URL not set in environment variables.")
+    headers = {
+        "API-KEY": auth_key,
+    }
+    data={
+        "query": "get_info",
+        "hash": hash_hex
+    }
+    try:
+        response = requests.post(url, headers=headers, data=data)
+        response.raise_for_status()
+        result = response.json()
+        if result.get("data"):
+            return "malicious"
+        else:
+            return "clean"
+    except requests.RequestException as e:
+        print(f"Error querying MalwareBazaar API: {e}")
+        return "unknown"
+    
+def CP_API_lookup_hash(hash_hex: str) -> str: # Change to second API lookup specific
     """
     Placeholder for external API hash lookup.
     Replace with actual API call logic.
