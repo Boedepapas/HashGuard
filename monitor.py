@@ -8,10 +8,8 @@ import requests
 import shutil
 import json
 import hashlib
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Optional, Dict
-from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileCreatedEvent, FileModifiedEvent
 
 #-------------------------------------------------------------------------------
@@ -323,37 +321,4 @@ def CP_API_lookup_hash(hash_hex: str) -> str: # Change to second API lookup spec
     import random
     return "clean" if random.random() > 0.1 else "malicious"
 
-#-------------------------------------------------------------------------------
-# Main Monitoring Loop
-# need to make a main.py file
-#-------------------------------------------------------------------------------
 
-def main():
-    out_queue = queue.PriorityQueue()
-    observer = Observer()
-    handler = FilterHandler(out_queue)
-    observer.schedule(handler, WATCH_PATH, recursive=True)
-    observer.start()
-
-    # Start stability worker thread
-    stability_thread = threading.Thread(target=stability_worker_loop, args=(out_queue,), daemon=True)
-    stability_thread.start()
-
-    # Start thread pool to process items from queue
-    with ThreadPoolExecutor(max_workers=WORKER_COUNT) as exe:
-        try:
-            while True:
-                try:
-                    item = out_queue.get(timeout=1.0)
-                except queue.Empty:
-                    continue
-                # Submit to pool for processing
-                exe.submit(worker_process_item, item)
-        #-------------------------------------------------------------------------------
-        # Change with GUI story
-        except KeyboardInterrupt:
-            print("Shutting down")
-        #-------------------------------------------------------------------------------
-        finally:
-            observer.stop()
-            observer.join()
