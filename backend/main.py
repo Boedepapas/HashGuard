@@ -4,7 +4,7 @@ import queue
 from concurrent.futures import ThreadPoolExecutor
 from watchdog.observers import Observer
 
-from monitor import (
+from backend.monitor import (
     WATCH_PATH,
     FilterHandler,
     stability_worker_loop,
