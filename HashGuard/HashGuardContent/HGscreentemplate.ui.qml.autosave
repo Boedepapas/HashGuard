@@ -1,0 +1,166 @@
+
+
+/*
+This is a UI file (.ui.qml) that is intended to be edited in Qt Design Studio only.
+It is supposed to be strictly declarative and only uses a subset of QML. If you edit
+this file manually, you might introduce QML code that is not supported by Qt Design Studio.
+Check out https://doc.qt.io/qtcreator/creator-quick-ui-forms.html for details on .ui.qml files.
+*/
+import QtQuick
+import QtQuick.Controls
+import HashGuard
+import QtQuick.Studio.DesignEffects
+
+Rectangle {
+    id: background
+    width: Constants.width
+    height: Constants.height
+    color: "#fffcfc"
+    border.width: 1
+
+    Rectangle {
+        id: topBar
+        x: 0
+        y: 0
+        width: 1920
+        height: 145
+        color: "#f82b2b"
+        radius: 20
+        border.width: 0
+        topRightRadius: 0
+        topLeftRadius: 0
+
+        Text {
+            id: titleHG
+            x: 173
+            y: 21
+            width: 457
+            height: 102
+            text: qsTr("HashGuard")
+            font.pixelSize: 80
+            font.styleName: "Bold"
+            font.family: "Tahoma"
+            font.bold: true
+        }
+
+        Image {
+            id: logoHG
+            x: 0
+            y: 0
+            width: 175
+            height: 145
+            source: "../HG_Logo.png"
+            fillMode: Image.PreserveAspectFit
+
+            Button {
+                id: homeScreen
+                x: 0
+                y: 0
+                width: 175
+                height: 145
+                visible: false
+                text: qsTr("Button")
+            }
+        }
+
+        Rectangle {
+            id: pagebar
+            x: 684
+            y: 12
+            width: 1200
+            height: 120
+            color: "#d62626"
+            radius: 20
+
+            Rectangle {
+                id: homepagebuttonImage
+                x: 15
+                y: 10
+                width: 282
+                height: 100
+                color: "#ffffff"
+                radius: 20
+
+                Text {
+                    id: homepagebuttonText
+                    text: qsTr("Home")
+                    anchors.fill: parent
+                    font.pixelSize: 50
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    font.styleName: "Bold"
+                    font.family: "Tahoma"
+                }
+            }
+
+            Rectangle {
+                id: logspagebuttonImage
+                x: 311
+                y: 10
+                width: 282
+                height: 100
+                color: "#ffffff"
+                radius: 20
+
+                Text {
+                    id: logspagebuttonText
+                    text: qsTr("Logs and Alerts")
+                    anchors.fill: parent
+                    font.pixelSize: 43
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    wrapMode: Text.Wrap
+                    font.styleName: "Bold"
+                    font.family: "Tahoma"
+                }
+            }
+
+            Rectangle {
+                id: quarantinepagebuttonImage
+                x: 607
+                y: 10
+                width: 282
+                height: 100
+                color: "#ffffff"
+                radius: 20
+
+                Text {
+                    id: quarantinepagebuttonText
+                    text: qsTr("Quarantine")
+                    anchors.fill: parent
+                    font.pixelSize: 45
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    font.styleName: "Bold"
+                    font.family: "Tahoma"
+                }
+            }
+
+            Rectangle {
+                id: settingspagebuttonImage
+                x: 903
+                y: 10
+                width: 282
+                height: 100
+                color: "#c1c0c0"
+                radius: 20
+
+                Text {
+                    id: settingspagebuttonText
+                    text: qsTr("Settings")
+                    anchors.fill: parent
+                    font.pixelSize: 50
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                    font.styleName: "Bold"
+                    font.family: "Tahoma"
+                }
+            }
+        }
+    }
+
+    MouseArea {
+        id: mouseArea
+        anchors.fill: parent
+    }
+}
