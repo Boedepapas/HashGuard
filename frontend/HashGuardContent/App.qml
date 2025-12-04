@@ -2,15 +2,17 @@ import QtQuick
 import HashGuard
 
 Window {
-    width: mainScreen.width
-    height: mainScreen.height
-
+    id: root
     visible: true
     title: "HashGuard"
+    width: 800
+    height: 600
 
-    Screen01 {
-        id: mainScreen
+    Loader{
+        id: pageLoader
+        anchors.fill: parent
+        source: currentPage
     }
-
+    property string currentPage: "HomeScreen.qml"
 }
 
