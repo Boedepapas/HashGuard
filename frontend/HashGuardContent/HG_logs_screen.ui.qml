@@ -18,6 +18,8 @@ Rectangle {
     color: "#c1c0c0"
     border.width: 1
 
+    property string requestedNavigate: ""
+
     Rectangle {
         id: topBar
         color: "#f82b2b"
@@ -73,6 +75,7 @@ Rectangle {
                 opacity: 0
                 visible: true
                 text: qsTr("Button")
+                onClicked: background.requestedNavigate = "home"
             }
         }
 
@@ -116,6 +119,7 @@ Rectangle {
                 MouseArea {
                     id: home_page_mouse_area
                     anchors.fill: parent
+                    onClicked: background.requestedNavigate = "home"
                 }
             }
 
@@ -172,6 +176,7 @@ Rectangle {
                 MouseArea {
                     id: quarantine_page_mouse_area
                     anchors.fill: parent
+                    onClicked: background.requestedNavigate = "quarantine"
                 }
             }
 
@@ -202,6 +207,7 @@ Rectangle {
                 MouseArea {
                     id: settings_page_mouse_area
                     anchors.fill: parent
+                    onClicked: background.requestedNavigate = "settings"
                 }
             }
         }
