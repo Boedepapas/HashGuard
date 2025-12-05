@@ -7,7 +7,6 @@ HG_logs_screen_ui {
     anchors.fill: parent
 
     // Logic part
-
     home_page_mouse_area.onClicked: {
         root.currentPage = "HomeScreen.qml"
     }

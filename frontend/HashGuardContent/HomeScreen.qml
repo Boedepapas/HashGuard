@@ -7,15 +7,7 @@ HG_home_screen_ui {
     anchors.fill: parent
 
     // Logic part
-    
-    if(backend.monitor.isScanning()){ //add isScanning method to backend monitor needs to come back true if monitor is monitoring the downloads folder
-        stop_image.visible = true
-        start_image.visible = false
-    }
-    if(!backend.monitor.isScanning()){
-        stop_image.visible = false
-        start_image.visible = true
-    }
+   
     logs_page_mouse_area.onClicked: {
         root.currentPage = "LogsScreen.qml"
     }

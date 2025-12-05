@@ -5,6 +5,7 @@ import HG_quarantine_screen_ui
 HG_quarantine_screen_ui {
     id: logsScreen
     anchors.fill: parent
+    
     //logic part
     home_page_mouse_area.onClicked: {
         root.currentPage = "HomeScreen.qml"
