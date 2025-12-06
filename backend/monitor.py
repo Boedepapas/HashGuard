@@ -14,6 +14,14 @@ from typing import Optional, Dict
 from watchdog.events import FileSystemEventHandler, FileCreatedEvent, FileModifiedEvent
 from dotenv import load_dotenv
 
+# Global IPC server reference for broadcasting updates
+IPC_SERVER = None
+
+def set_ipc_server(server):
+    """Set the IPC server for broadcasting updates."""
+    global IPC_SERVER
+    IPC_SERVER = server
+
 #-------------------------------------------------------------------------------
 # Configuration Loader
 #-------------------------------------------------------------------------------
@@ -195,6 +203,13 @@ def Quarantine(path: str):
             quarantine_file.chmod(0o600)
         except Exception as e:
             print(f"Warning: Failed to set permissions on {quarantine_file}: {e}")
+        
+        # Broadcast quarantine update to frontend
+        if IPC_SERVER:
+            try:
+                IPC_SERVER.broadcast({"type": "quarantine_updated", "action": "added", "filename": str(quarantine_file.name)})
+            except Exception as e:
+                print(f"Failed to broadcast quarantine update: {e}")
         
         # Create metadata file
         timestamp = time.time()

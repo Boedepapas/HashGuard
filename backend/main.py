@@ -14,9 +14,10 @@ from monitor import (
     stability_worker_loop,
     WORKER_COUNT,
     worker_process_item,
+    set_ipc_server as monitor_set_ipc_server,
 )
 from ipc import IPCServer
-from logger import write_event_log, set_logs_dir
+from logger import write_event_log, set_logs_dir, set_ipc_server as logger_set_ipc_server
 
 
 class BackendController:
@@ -106,6 +107,10 @@ def main():
     
     ipc_server = IPCServer(command_handler=controller.handle_command)
     ipc_server.start()
+    
+    # Pass IPC server to monitor and logger for broadcasting updates
+    monitor_set_ipc_server(ipc_server)
+    logger_set_ipc_server(ipc_server)
     
     handler = FilterHandler(out_queue)
     observer.schedule(handler, WATCH_PATH, recursive=True)

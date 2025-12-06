@@ -22,6 +22,12 @@ def init_logs(logs_dir: str):
 # Will be set by main.py
 LOGS_DIR = None
 LOGS_LOCK = threading.Lock()
+IPC_SERVER = None
+
+def set_ipc_server(server):
+    """Set the IPC server for broadcasting updates."""
+    global IPC_SERVER
+    IPC_SERVER = server
 
 
 def set_logs_dir(logs_dir: str):
@@ -104,6 +110,13 @@ def write_scan_log(filename: str, verdict: str, hash_hex: str,
             
             # Also append to monthly text log
             append_to_monthly_log(LOGS_DIR, filename, verdict, hash_hex, timestamp)
+            
+            # Broadcast log update to frontend
+            if IPC_SERVER:
+                try:
+                    IPC_SERVER.broadcast({"type": "log_updated", "action": "added", "filename": filename, "verdict": verdict})
+                except Exception as e:
+                    print(f"Failed to broadcast log update: {e}")
             
             return log_path
         except Exception as e:
