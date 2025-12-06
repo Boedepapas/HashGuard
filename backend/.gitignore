@@ -1,0 +1,52 @@
+# Environment variables and local configuration
+.env
+.env.local
+config.local.yaml
+
+# Cache and database files
+*.sqlite
+*.db
+cache.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Quarantine and logs (local runtime)
+quarantine/
+logs/
