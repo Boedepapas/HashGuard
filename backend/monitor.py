@@ -9,8 +9,10 @@ import shutil
 import json
 import hashlib
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional, Dict
 from watchdog.events import FileSystemEventHandler, FileCreatedEvent, FileModifiedEvent
+from dotenv import load_dotenv
 
 #-------------------------------------------------------------------------------
 # Configuration Loader
@@ -18,14 +20,60 @@ from watchdog.events import FileSystemEventHandler, FileCreatedEvent, FileModifi
 
 import yaml
 
+# Load environment variables from .env file
+load_dotenv()
+
 CONFIG_PATH = "config.yaml"
 with open(CONFIG_PATH, "r") as f:
     CFG = yaml.safe_load(f)
 
-WATCH_PATH = os.path.abspath(CFG["watch_path"])
-QUARANTINE_PATH = os.path.abspath(CFG.get["quarantine_path"])
-STABILITY_SECONDS = float(CFG.get("stability_seconds", 3))
+# Initialize paths - use Program Files if config is empty
+def get_program_files_path():
+    """Get the Program Files directory for HashGuard."""
+    import platform
+    if platform.system() == "Windows":
+        prog_files = os.getenv("ProgramFiles", "C:\\Program Files")
+    else:
+        prog_files = "/opt"
+    return os.path.join(prog_files, "HashGuard")
+
+PROGRAM_FILES_PATH = get_program_files_path()
+
+# Watch path - user sets via UI, defaults to user's Downloads if empty
+watch_path_config = CFG.get("watch_path", "").strip()
+if watch_path_config:
+    WATCH_PATH = os.path.abspath(watch_path_config)
+else:
+    # Default to user's Downloads folder
+    WATCH_PATH = os.path.join(os.path.expanduser("~"), "Downloads")
+
+# Quarantine path - created in Program Files
+quarantine_path_config = CFG.get("quarantine_path", "").strip()
+if quarantine_path_config:
+    QUARANTINE_PATH = os.path.abspath(quarantine_path_config)
+else:
+    QUARANTINE_PATH = os.path.join(PROGRAM_FILES_PATH, "quarantine")
+
+# Logs path - created in Program Files  
+logs_path_config = CFG.get("logs_path", "").strip()
+if logs_path_config:
+    LOGS_PATH = os.path.abspath(logs_path_config)
+else:
+    LOGS_PATH = os.path.join(PROGRAM_FILES_PATH, "logs")
+
+# Cache database - created in Program Files
+cache_db_config = CFG.get("cache_db", "").strip()
+if cache_db_config:
+    CACHE_DB = os.path.abspath(cache_db_config)
+else:
+    CACHE_DB = os.path.join(PROGRAM_FILES_PATH, "cache.sqlite")
+
+# Create directories if they don't exist
+os.makedirs(QUARANTINE_PATH, exist_ok=True)
+os.makedirs(LOGS_PATH, exist_ok=True)
+os.makedirs(os.path.dirname(CACHE_DB), exist_ok=True)
 DEBOUNCE_MS = int(CFG.get("debounce_ms", 500))
+STABILITY_SECONDS = int(CFG.get("stability_seconds", 3))
 MIN_SIZE = int(CFG.get("min_size_bytes", 1))
 MAX_SIZE = int(CFG.get("max_size_bytes", 2_147_483_648))
 ALLOWED_EXTS = set(x.lower() for x in CFG.get("allowed_extensions", []))
@@ -33,7 +81,7 @@ BLOCKED_PATHS = [os.path.abspath(p) for p in CFG.get("blocked_paths", [])]
 IGNORE_NAME_REGEX = [re.compile(r) for r in CFG.get("ignore_name_regex", [])]
 PRIORITY_MAP = CFG.get("priority_map", {})
 WORKER_COUNT = int(CFG.get("worker_count", 4))
-CACHE_DB = os.path.abspath(CFG.get("cache_db", "cache.sqlite"))
+WORKER_THROTTLE_MS = int(CFG.get("worker_throttle_ms", 0))
 
 #-------------------------------------------------------------------------------
 # Local Cache
@@ -112,29 +160,61 @@ def priority_for_path(path: str) -> int:
     return int(PRIORITY_MAP.get(ext.lower(), 1))
 
 def Quarantine(path: str):
+    """Move a file to quarantine and create metadata."""
     if not QUARANTINE_PATH:
         print(f"No quarantine path set; cannot quarantine {path}")
-        return
+        return False
+    
+    path_obj = Path(path)
+    quarantine_dir = Path(QUARANTINE_PATH)
+    
     try:
-        os.replace(path, QUARANTINE_PATH)
-    except OSError:
-        shutil.move(path,QUARANTINE_PATH)
-    try:
-        path.chmod(0o600)  # read write for owner only
-    except Exception as e:
-        print(f"Failed to set read-only permissions on {path}: {e}")
-    timestamp = time.time()
-    meta = {
-            "original_path": str(path),
-            "quarantined_path": str(QUARANTINE_PATH),
+        quarantine_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Generate unique quarantine filename
+        basename = path_obj.name
+        quarantine_file = quarantine_dir / basename
+        
+        # If file exists, add timestamp to make unique
+        if quarantine_file.exists():
+            timestamp = int(time.time())
+            name_parts = basename.rsplit('.', 1)
+            if len(name_parts) == 2:
+                quarantine_file = quarantine_dir / f"{name_parts[0]}.{timestamp}.{name_parts[1]}"
+            else:
+                quarantine_file = quarantine_dir / f"{basename}.{timestamp}"
+        
+        # Move file to quarantine
+        try:
+            path_obj.replace(quarantine_file)
+        except OSError:
+            shutil.move(str(path_obj), str(quarantine_file))
+        
+        # Set read-only permissions (owner only)
+        try:
+            quarantine_file.chmod(0o600)
+        except Exception as e:
+            print(f"Warning: Failed to set permissions on {quarantine_file}: {e}")
+        
+        # Create metadata file
+        timestamp = time.time()
+        meta = {
+            "original_path": str(path_obj),
+            "quarantined_path": str(quarantine_file),
             "timestamp": timestamp,
             "action": "quarantine",
+            "filename": basename,
         }
-    meta_path = path.with_suffix(path.suffix + ".meta.json")
-    with open(meta_path, "w", encoding="utf-8") as f:
-        json.dump(meta, f)
-
-    print(f"Quarantined {path} to {QUARANTINE_PATH}")
+        meta_path = quarantine_file.with_suffix(quarantine_file.suffix + ".meta.json")
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(meta, f, indent=2)
+        
+        print(f"Quarantined {path_obj} to {quarantine_file}")
+        return True
+        
+    except Exception as e:
+        print(f"Error quarantining {path}: {e}")
+        return False
 #-------------------------------------------------------------------------------
 # Debounce and Stability
 #-------------------------------------------------------------------------------
@@ -160,12 +240,14 @@ def schedule_stability_check(filepath: str):
     with PENDING_LOCK:
         PENDING[filepath] = PendingItem(path=filepath, last_seen=now, last_size=size)
 
-def stability_worker_loop(out_queue: "queue.PriorityQueue"):
+def stability_worker_loop(out_queue: "queue.PriorityQueue", stop_event: threading.Event = None):
     """
     Background thread that periodically scans pending items and moves stable files
     into the worker queue. Stability defined as unchanged size for STABILITY_SECONDS.
     """
     while True:
+        if stop_event and stop_event.is_set():
+            return
         time.sleep(DEBOUNCE_MS / 1000.0)
         now = time.time()
         to_process = []
@@ -216,10 +298,10 @@ def handle_fs_event(filepath: str, out_queue: "queue.PriorityQueue"):
         return
     if name_matches_ignore(os.path.basename(filepath)):
         return
-    schedule_stability_check(filepath)
+    # Drop early if extension is not allowed
     if not extension_allowed(filepath):
-        schedule_stability_check(filepath)
         return
+    schedule_stability_check(filepath)
 
 
 def enqueue_if_passes_filters(pth: str, out_queue: "queue.PriorityQueue"):
@@ -239,6 +321,9 @@ def enqueue_if_passes_filters(pth: str, out_queue: "queue.PriorityQueue"):
         return
     if name_matches_ignore(name):
         print(f"DROP ignore name final {p}")
+        return
+    if not extension_allowed(p):
+        print(f"DROP extension final {p}")
         return
     if not size_ok(p):
         print(f"DROP size rule final {p}")
@@ -268,38 +353,101 @@ def enqueue_if_passes_filters(pth: str, out_queue: "queue.PriorityQueue"):
 def worker_process_item(item):
     """
     Worker function to process a single item from the queue.
-    Computes hash, checks cache, and simulates external scan.
+    Tries premium APIs first, falls back to free APIs if keys not available.
+    Combines verdicts from multiple sources.
     """
-    prio, ts, path, hash = item
-    print(f"WORKER START {path} hash= {hash}")
-    MBverdict = MB_API_lookup_hash(hash)
-    verdict2 = CP_API_lookup_hash(hash) # change to second API lookup specific
-    # Combine verdicts (simple logic: if either says malicious, it's malicious)
-    if MBverdict == "malicious" or verdict2 == "malicious":
+    from logger import write_scan_log, write_quarantine_log, write_event_log
+    from ipc import IPCServer
+    
+    prio, ts, path, hash_hex = item
+    print(f"WORKER START {path} hash={hash_hex}")
+    
+    # Try to get verdicts from available APIs (in order of preference)
+    verdicts = []
+    sources_used = []
+    
+    # Try MalwareBazaar (premium)
+    mb_verdict = MB_API_lookup_hash(hash_hex)
+    if mb_verdict:
+        verdicts.append(mb_verdict)
+        sources_used.append("MalwareBazaar")
+        print(f"  MalwareBazaar: {mb_verdict}")
+    
+    # Try VirusTotal (premium)
+    vt_verdict = VT_API_lookup_hash(hash_hex)
+    if vt_verdict:
+        verdicts.append(vt_verdict)
+        sources_used.append("VirusTotal")
+        print(f"  VirusTotal: {vt_verdict}")
+    
+    # Try custom API
+    cp_verdict = CP_API_lookup_hash(hash_hex)
+    if cp_verdict:
+        verdicts.append(cp_verdict)
+        sources_used.append("CustomAPI")
+        print(f"  Custom API: {cp_verdict}")
+    
+    # Fallback to free API if no results
+    if not verdicts:
+        free_verdict = free_API_lookup_hash(hash_hex)
+        if free_verdict:
+            verdicts.append(free_verdict)
+            sources_used.append("FreeAPI")
+            print(f"  Free API (fallback): {free_verdict}")
+    
+    # Combine verdicts: if ANY says malicious, mark as malicious
+    if not verdicts:
+        # No API results available - mark as unknown (do not assume clean)
+        verdict = "unknown"
+        print(f"  WARNING: No APIs available, marking unknown")
+    elif "malicious" in verdicts:
         verdict = "malicious"
     else:
         verdict = "clean"
-    cache_store(hash, verdict)
+    
+    cache_store(hash_hex, verdict)
+    
+    # Write log file
+    import os as os_module
+    filename = os_module.path.basename(path)
+    write_scan_log(filename, verdict, hash_hex, path, sources_used)
+    
     if verdict == "malicious":
         print(f"VERDICT malicious {path}")
-        # Add quarantine logic here later
-    if verdict == "clean":
+        write_quarantine_log(filename, hash_hex, path)
+        Quarantine(path)
+    elif verdict == "clean":
         print(f"VERDICT clean {path}")
+    else:
+        print(f"VERDICT unknown {path}")
+        write_event_log("unknown_verdict", {"path": path, "hash": hash_hex})
+        write_quarantine_log(filename, hash_hex, path)
+        Quarantine(path)
+
+    # Throttle to reduce CPU spikes
+    if WORKER_THROTTLE_MS > 0:
+        time.sleep(WORKER_THROTTLE_MS / 1000.0)
     
-def MB_API_lookup_hash(hash_hex: str) -> str: # MalwareBazaar API lookup
-    auth_key = os.getenv("MalwareBazaar_Auth_KEY")
-    url = os.getenv("MalwareBazaar_Url")
-    if not auth_key or not url:
-        raise ValueError("MalwareBazaar API key or URL not set in environment variables.")
-    headers = {
-        "API-KEY": auth_key,
-    }
-    data={
-        "query": "get_info",
-        "hash": hash_hex
-    }
+    
+def MB_API_lookup_hash(hash_hex: str) -> Optional[str]:
+    """
+    MalwareBazaar API lookup for hash reputation.
+    Returns 'malicious', 'clean', or None (unknown/error).
+    Requires MalwareBazaar_Auth_KEY (preferred) or MALWAREBAZAAR_API_KEY environment variable.
+    """
+    auth_key = os.getenv("MalwareBazaar_Auth_KEY") or os.getenv("MALWAREBAZAAR_API_KEY")
+    if not auth_key:
+        return None  # API key not configured, skip this service
+    
+    url = "https://mb-api.abuse.ch/api/v1/"
+    headers = {"API-KEY": auth_key}
+    data = {"query": "get_info", "hash": hash_hex}
+    
     try:
-        response = requests.post(url, headers=headers, data=data)
+        response = requests.post(url, headers=headers, data=data, timeout=10)
+        if response.status_code == 401:
+            print("MalwareBazaar API error: unauthorized (check API key)")
+            return None
         response.raise_for_status()
         result = response.json()
         if result.get("data"):
@@ -307,18 +455,71 @@ def MB_API_lookup_hash(hash_hex: str) -> str: # MalwareBazaar API lookup
         else:
             return "clean"
     except requests.RequestException as e:
-        print(f"Error querying MalwareBazaar API: {e}")
-        return "unknown"
+        print(f"MalwareBazaar API error: {e}")
+        return None
+
+
+def VT_API_lookup_hash(hash_hex: str) -> Optional[str]:
+    """
+    VirusTotal API lookup for hash reputation.
+    Returns 'malicious', 'clean', or None (unknown/error).
+    Requires VIRUSTOTAL_API_KEY environment variable.
+    """
+    auth_key = os.getenv("VIRUSTOTAL_API_KEY")
+    if not auth_key:
+        return None  # API key not configured, skip this service
     
-def CP_API_lookup_hash(hash_hex: str) -> str: # Change to second API lookup specific
+    url = f"https://www.virustotal.com/api/v3/files/{hash_hex}"
+    headers = {"x-apikey": auth_key}
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        result = response.json()
+        data = result.get("data", {})
+        attributes = data.get("attributes", {})
+        stats = attributes.get("last_analysis_stats", {})
+        
+        malicious_count = stats.get("malicious", 0)
+        if malicious_count > 0:
+            return "malicious"
+        else:
+            return "clean"
+    except requests.RequestException as e:
+        print(f"VirusTotal API error: {e}")
+        return None
+
+
+def free_API_lookup_hash(hash_hex: str) -> Optional[str]:
     """
-    Placeholder for external API hash lookup.
-    Replace with actual API call logic.
+    Free fallback API lookup using ThreatFox (no key required).
+    Returns 'malicious' if hash is found, otherwise 'clean'.
     """
-    # Simulate network delay
-    time.sleep(1)
-    # For demo purposes, randomly decide verdict
-    import random
-    return "clean" if random.random() > 0.1 else "malicious"
+    try:
+        resp = requests.post(
+            "https://threatfox-api.abuse.ch/api/v1/",
+            json={"query": "search_hash", "hash": hash_hex},
+            timeout=8,
+        )
+        if resp.status_code == 401:
+            print("Free API fallback unauthorized (ThreatFox). Skipping.")
+            return None
+        resp.raise_for_status()
+        data = resp.json()
+        if data.get("data"):
+            return "malicious"
+        return "clean"
+    except requests.RequestException as e:
+        print(f"Free API fallback unavailable: {e}")
+        return None
+
+
+def CP_API_lookup_hash(hash_hex: str) -> Optional[str]:
+    """
+    Placeholder for second API lookup.
+    Replace with your actual API call logic.
+    """
+    # TODO: Implement your second API here
+    return None
 
 
