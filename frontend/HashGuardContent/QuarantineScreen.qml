@@ -8,21 +8,70 @@ Item {
 
     // wrapper forwards navigation requests to App.qml
     signal requestNavigate(string pageFile)
-
-
-    function logQuarantineCount() {
-            if (AppState.quarantineItems) {
-                console.log("Quarantine count:", AppState.quarantineItems.length)
+    function requestOpenQuarantine() {
+        console.log("[UI] requestOpenQuarantine -> calling backend")
+        var xhr = new XMLHttpRequest()
+        xhr.open("POST", "http://127.0.0.1:5001/open-quarantine")
+        xhr.setRequestHeader("Content-Type", "application/json")
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                console.log("[UI] open-quarantine response", xhr.status, xhr.responseText)
+                try {
+                    var r = JSON.parse(xhr.responseText)
+                    if (r.ok) {
+                        // success feedback if desired
+                    } else {
+                        console.error("[UI] backend error:", r.error)
+                    }
+                } catch (e) {
+                    console.error("[UI] invalid response", e)
+                }
             }
         }
+        xhr.send() // no body required
+    }
 
-        function deleteByIndex(idx) {
-            if (AppState.quarantineItems && idx >= 0 && idx < AppState.quarantineItems.length) {
-                var file = AppState.quarantineItems[idx]
-                console.log("Deleting file at index", idx, "with id", file.id)
-                // remove from array
+
+    function deleteQuarantineItem(index, fileId) {
+            console.log("wrapper.deleteQuarantineItem", index, fileId)
+            // optimistic removal example:
+            var removed = AppState.quarantineItems.splice(index, 1)
+            // forward to daemon via AppState or Backend
+            if (AppState.deleteQuarantineFile) {
+                AppState.deleteQuarantineFile(fileId)
+            } else if (Backend && Backend.deleteQuarantineFile) {
+                Backend.deleteQuarantineFile(fileId)
+            } else {
+                // fallback: log or REST call
+                console.warn("No backend bridge available")
             }
+    }
+    function wireDelegate(d, idx) {
+            if (!d || !d.trashBtn || d.__trashWired) return
+            // connect trash click -> emit delegate signal and call wrapper
+            d.trashBtn.clicked.connect((function(item, index) {
+                return function() {
+                    // emit delegate signal (optional)
+                    if (item.deleteRequested) item.deleteRequested(index, item.fileInfo.id)
+                    // call centralized delete logic
+                    wrapper.deleteQuarantineItem(index, item.fileInfo.id)
+                }
+            })(d, idx))
+            d.__trashWired = true
+    }
+    // wire all current delegates in the repeater
+    function wireAllDelegates() {
+        var ui = uiLoader.item
+        if (!ui || !ui.filesRepeater) return
+        var rep = ui.filesRepeater
+        if (rep.count === undefined || !rep.itemAt) return
+        for (var i = 0; i < rep.count; ++i) {
+            var d = rep.itemAt(i)
+            wireDelegate(d, i)
         }
+    }
+
+
 
 
     Loader {
@@ -37,6 +86,8 @@ Item {
     // track ui instances we've already wired (do not add properties to ui itself)
     property var navAttachedItems: []
 
+    property var rewireAttachedItems: []
+
     Connections {
         target: uiLoader
         onStatusChanged: {
@@ -48,6 +99,22 @@ Item {
                     return
                 }
                 console.log("[QuarantineLoader] UI loaded:", ui)
+                // --- wire open button once per ui instance ---
+                if (!ui.__openButtonWired) {
+                    if (ui.openFolderButton) {
+                        console.log("[QuarantineLoader] wiring openFolderButton")
+                        ui.openFolderButton.clicked.connect(function() {
+                            console.log("[QuarantineLoader] openFolderButton clicked")
+                            // call wrapper function that talks to backend
+                            wrapper.requestOpenQuarantine()
+                        })
+                        ui.__openButtonWired = true
+                    } else {
+                        console.warn("[QuarantineLoader] ui does not expose openFolderButton")
+                        }
+                    } else {
+                        console.log("[QuarantineLoader] open button already wired for this ui instance")
+                        }
 
                 // --- Navigation wiring: attach once per ui instance ---
                 if (navAttachedItems.indexOf(ui) === -1) {
@@ -88,8 +155,9 @@ Item {
                     console.log("[QuarantineLoader] navigation handler already attached for this ui instance")
                 }
 
-                // --- Other handlers (start/stop button, info text, quarantine actions) ---
+             // --- Other handlers (start/stop button, info text, quarantine actions) ---
             }
-        }
+            // place this after your navigation wiring (still inside onStatusChanged when Loader.Ready)
+        } 
     }
 }

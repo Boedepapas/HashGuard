@@ -252,7 +252,8 @@ Rectangle {
 
         Text {
             id: home_info_text
-            text: qsTr("New Logs: \nNew Files in Quarantine: ")
+            text: qsTr("New Logs: " + AppState.newFilesScanned
+                       + "\nNew Files in Quarantine: " + AppState.newQuarantineCount)
             anchors.fill: parent
             font.pixelSize: Math.max(40, Math.min(parent.height * 0.050, 120))
             horizontalAlignment: Text.AlignHCenter

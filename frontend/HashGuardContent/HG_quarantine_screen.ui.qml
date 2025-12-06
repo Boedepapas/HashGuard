@@ -19,8 +19,11 @@ Rectangle {
     color: "#c1c0c0"
     border.width: 1
 
-    property string requestedNavigate: ""
-
+    property string requestedNavigation: ""
+    property string deletefileId: ""
+    property int deletebuttonIndex: 0
+    property string selectedFileName: ""
+    property alias openFolderButton: deleteBox.openFolderButton
     Rectangle {
         id: topBar
         color: "#f82b2b"
@@ -108,7 +111,7 @@ Rectangle {
                     MouseArea {
                         id: home_page_mouse_area
                         anchors.fill: parent
-                        onClicked: background.requestedNavigation = "logs"
+                        onClicked: background.requestedNavigation = "home"
                     }
                 }
 
@@ -131,6 +134,11 @@ Rectangle {
                         font.family: "Tahoma"
                         font.bold: true
                     }
+                    MouseArea {
+                        id: logs_page_mouse_area
+                        anchors.fill: parent
+                        onClicked: background.requestedNavigation = "logs"
+                    }
                 }
 
                 Rectangle {
@@ -150,11 +158,6 @@ Rectangle {
                         font.styleName: "Bold"
                         font.family: "Tahoma"
                         font.bold: true
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: background.requestedNavigation = "quarantine"
                     }
                 }
 
@@ -178,6 +181,7 @@ Rectangle {
                     }
 
                     MouseArea {
+                        id: settings_page_mouse_area
                         anchors.fill: parent
                         onClicked: background.requestedNavigation = "settings"
                     }
@@ -245,20 +249,13 @@ Rectangle {
                                 radius: 6
                                 Layout.alignment: Qt.AlignVCenter
                                 Button {
+                                    property bool selected: false
                                     id: trashBtn
+
                                     width: 45
                                     height: 45
                                     hoverEnabled: false
                                     opacity: 0
-
-                                }
-
-                                Image {
-                                    id: trashImage
-                                    source: "../trash.png"
-                                    fillMode: Image.PreserveAspectFit
-                                    sourceSize.height: 45
-                                    sourceSize.width: 45
                                 }
                             }
 
@@ -304,4 +301,44 @@ Rectangle {
             } // end Column
         } // end ScrollView
     } // end quarantine_area Rectangle
+    Rectangle {
+        id: deleteBox
+        property alias openFolderButton: openFolderButton
+        anchors {
+            top: quarantine_area.bottom
+            topMargin: 50
+            horizontalCenter: quarantine_area.horizontalCenter
+        }
+        height: 100
+        width: 650
+        Text {
+            anchors {
+                top: parent.top
+                bottom: parent.bottom
+                left: parent.left
+                right: openFolderButton.left
+            }
+            text: qsTr("Quarantine Folder")
+            font.pixelSize: 50
+            font.bold: true
+            verticalAlignment: Text.AlignVCenter
+            padding: 15
+            font.family: "Tahoma"
+        }
+
+        Button {
+            id: openFolderButton
+            objectName: "openFolderButton"
+            anchors {
+                top: parent.top
+                bottom: parent.bottom
+                right: parent.right
+            }
+
+            text: qsTr("Open")
+            font.family: "Tahoma"
+            font.pixelSize: 50
+            font.bold: true
+        }
+    }
 }

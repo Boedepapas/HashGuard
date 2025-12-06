@@ -41,6 +41,22 @@ QtObject {
     property var allowedExtensions: settings.allowed_extensions || [".exe",".msi",".zip",".7z",".pdf",".docx",".js"]
     property var priorityMap: settings.priority_map || ({".exe":10,".msi":9,".zip":7,".7z":7,".pdf":5})
 
+    function openFolder(path) {
+            if (!path) {
+                console.warn("[AppState] openFolder called with empty path")
+                return
+            }
+            // Normalize slashes and ensure no accidental double slashes
+            var normalized = path.replace(/\\/g, "/")
+            // Ensure it starts with a drive letter or slash; adjust if needed
+            if (normalized.indexOf(":/") === -1 && normalized.indexOf("/") !== 0) {
+                // if you store relative paths, convert to absolute here
+            }
+            var url = "file:///" + normalized
+            console.log("[AppState] openFolder ->", url)
+            Qt.openUrlExternally(url)
+        }
+
 
  //property string activePage: "home" | "logs" | "settings" | "quarantine"
 

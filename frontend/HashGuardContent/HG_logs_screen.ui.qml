@@ -108,7 +108,7 @@ Rectangle {
                     MouseArea {
                         id: home_page_mouse_area
                         anchors.fill: parent
-                        onClicked: background.requestedNavigation = "logs"
+                        onClicked: background.requestedNavigation = "home"
                     }
                 }
 
