@@ -26,40 +26,38 @@
 Copy-Item .env.example .env
 ```
 
-### Step 2: Configure API Keys (Optional but Recommended)
+### Step 2: Configure API Keys (Required)
 
-The backend uses a **hybrid approach**:
-- **Premium APIs** (higher accuracy): MalwareBazaar, VirusTotal
-- **Free Fallback** (lower accuracy): Available without configuration
+All external lookups require user-provided API keys. Without them, files without cached verdicts will be treated as unknown and quarantined.
 
-#### Option A: Without API Keys (Free but Limited)
-If you don't configure API keys, the backend will:
-- Use free fallback APIs with reduced accuracy
-- Still protect against known threats (via free sources)
-- Be fully functional but less comprehensive
+- **MalwareBazaar** (required for MB lookups)
+  1. Visit https://malwarebazaar.abuse.ch/
+  2. Sign up for an account
+  3. Navigate to the API section and copy your key
+  4. Edit `.env`:
+     ```
+     MALWAREBAZAAR_API_KEY=your-actual-key-here
+     ```
 
-#### Option B: With MalwareBazaar API Key (Recommended)
+- **VirusTotal** (required for VT lookups)
+  1. Visit https://www.virustotal.com/
+  2. Sign up for an account
+  3. Go to Settings → API Key and copy it
+  4. Edit `.env`:
+     ```
+     VIRUSTOTAL_API_KEY=your-actual-key-here
+     ```
 
-1. Visit https://malwarebazaar.abuse.ch/
-2. Sign up for a free account
-3. Navigate to API section and copy your API key
-4. Edit `.env`:
-   ```
-   MALWAREBAZAAR_API_KEY=your-actual-key-here
-   ```
+- **ThreatFox** (optional)
+  1. Visit https://threatfox.abuse.ch/
+  2. Sign up for an account
+  3. Copy the API key
+  4. Edit `.env`:
+     ```
+     THREATFOX_API_KEY=your-actual-key-here
+     ```
 
-#### Option C: With VirusTotal API Key
-
-1. Visit https://www.virustotal.com/
-2. Sign up for a free account
-3. Go to Settings → API Key and copy it
-4. Edit `.env`:
-   ```
-   VIRUSTOTAL_API_KEY=your-actual-key-here
-   ```
-
-#### Option D: Use Both (Best Coverage)
-Add both API keys to `.env` for maximum threat detection accuracy.
+Add both MalwareBazaar and VirusTotal keys for best coverage. ThreatFox is additive.
 
 ### Step 3: Configure Scan Settings
 
@@ -83,13 +81,13 @@ python hashguard_service.py install
 python hashguard_service.py start
 ```
 
-## How the Hybrid API Works
+## How API Scanning Works
 
 ### Verdict Logic:
-1. **Queries APIs in order**: MalwareBazaar → VirusTotal → Custom API → Free Fallback
+1. **Queries configured APIs**: MalwareBazaar → VirusTotal → ThreatFox → Custom API
 2. **If ANY API says malicious** → File is quarantined
 3. **If all say clean** → File is allowed
-4. **If no APIs available** → File is treated as clean (safe default)
+4. **If unknown/no response** → File is quarantined (no anonymous fallback)
 5. **Results are cached** → Same file hash checked again uses cached result
 
 ### API Priority:
@@ -97,8 +95,8 @@ python hashguard_service.py start
 |-----|---------------|----------|-------|
 | MalwareBazaar | Yes | ★★★★★ | Fast |
 | VirusTotal | Yes | ★★★★★ | Medium |
+| ThreatFox | Yes | ★★★★☆ | Fast |
 | Custom API | Maybe | Varies | Varies |
-| Free Fallback | No | ★★☆☆☆ | Slow |
 
 ## Important Security Notes
 
@@ -111,11 +109,12 @@ python hashguard_service.py start
 
 ### "MALWAREBAZAAR_API_KEY environment variable not set"
 - Copy `.env.example` to `.env`
-- Add your actual API key (or leave blank for free mode)
+- Add your actual API key (required for lookups)
 
 ### "No APIs available"
 - Either no API keys configured OR
 - All APIs are unreachable (network issues)
+- Files without cached verdicts will be quarantined until keys are added or services recover
 - Check internet connection and API status pages
 
 ### Files not being scanned

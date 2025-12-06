@@ -11,7 +11,7 @@ Expected output:
 [IPC] Server started on 127.0.0.1:54321
 ```
 
-## Configure API Keys (Optional)
+## Configure API Keys
 ```powershell
 # Copy template
 Copy-Item .env.example .env
@@ -20,12 +20,14 @@ Copy-Item .env.example .env
 notepad .env
 ```
 
+Without API keys, external lookups are unavailable and unknown files are quarantined by default.
+
 ## Main Directories
 | Path | Purpose |
 |------|---------|
 | `./downloads` | Watch directory (configurable) |
-| `~/HashGuardDemo/quarantine/` | Quarantined files |
-| `~/HashGuardDemo/logs/` | Scan results (JSON) |
+| `./quarantine/` | Quarantined files |
+| `./logs/` | Scan results (JSON + monthly text) |
 | `./cache.sqlite` | Hash verdict cache |
 
 ## IPC Commands
@@ -54,7 +56,7 @@ status = client.send_command({"type": "get_status"})
 ```
 Query APIs → If ANY malicious → QUARANTINE
             → If all clean → ALLOW
-            → If no response → ALLOW (safe default)
+            → If unknown/no response → QUARANTINE
 ```
 
 ## File Structure
@@ -94,6 +96,12 @@ Add to .env: MALWAREBAZAAR_API_KEY=your-key
 ```
 Sign up: https://www.virustotal.com/
 Add to .env: VIRUSTOTAL_API_KEY=your-key
+```
+
+### ThreatFox (optional)
+```
+Sign up: https://threatfox.abuse.ch/
+Add to .env: THREATFOX_API_KEY=your-key
 ```
 
 ## Config Settings
@@ -158,7 +166,7 @@ Check:
 ## Status
 ✅ Backend ready for integration
 ✅ IPC server listening on 127.0.0.1:54321
-✅ API keys optional (free fallback available)
+✅ API keys required (no anonymous fallback)
 ✅ All logging implemented
 ✅ Frontend integration guide complete
 

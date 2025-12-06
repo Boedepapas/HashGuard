@@ -153,30 +153,29 @@ apis:
     url: "https://api.malwarebazaar.abuse.ch/api/v1/"
   virustotal:
     enabled: true
-  free_fallback:
-    enabled: true
-    url: "https://urlhaus-api.abuse.ch/v1/"
+  threatfox:
+    enabled: false
+    url: "https://threatfox-api.abuse.ch/api/v1/"
 ```
 
 ---
 
-## API Integration (Hybrid Approach)
+## API Integration (Key-Gated)
 
-### Premium APIs (User configures)
-- **MalwareBazaar**: High-accuracy threat intelligence (free account)
+### Primary APIs (require user keys)
+- **MalwareBazaar**: High-accuracy threat intelligence (key required)
   - Environment variable: `MALWAREBAZAAR_API_KEY`
   - Source: https://malwarebazaar.abuse.ch/
 
-- **VirusTotal**: Crowd-sourced antivirus engine (free tier available)
+- **VirusTotal**: Crowd-sourced antivirus engine (key required)
   - Environment variable: `VIRUSTOTAL_API_KEY`
   - Source: https://www.virustotal.com/
 
-- **Custom API**: Placeholder for user's own service
+- **ThreatFox** (optional): Additional indicators (key required)
+  - Environment variable: `THREATFOX_API_KEY`
+  - Source: https://threatfox.abuse.ch/
 
-### Free Fallback (Always available)
-- **URLhaus**: Free threat intelligence without authentication
-- Used when premium APIs not configured
-- Lower accuracy but better than nothing
+- **Custom API**: Placeholder for user's own service
 
 ### Verdict Logic
 ```
@@ -186,7 +185,7 @@ Collect verdicts: "malicious", "clean", "unknown"
     ↓
 If ANY verdict == "malicious"   → QUARANTINE file
 Else if ALL verdicts != "unknown" → ALLOW file
-Else (no results)               → ALLOW file (safe default)
+Else (no results/unknown)        → QUARANTINE file
     ↓
 Cache result for future lookups
 ```
@@ -433,7 +432,7 @@ client.close()
 - ✅ Keys loaded from environment variables
 - ✅ `.env.example` template for users
 - ✅ `.env` ignored in `.gitignore`
-- ✅ Works without keys (free fallback)
+- ✅ Requires user-provided keys (no anonymous fallback)
 
 ### IPC Security
 - ✅ Localhost only (127.0.0.1:54321)
@@ -475,7 +474,7 @@ client.close()
 ### Network
 - **Per API call**: ~50-100ms
 - **Rate limits**: Depends on API plan
-- **Fallback**: Available if APIs fail
+- **Behavior**: Unknown/no-response files are quarantined
 
 ---
 
@@ -516,7 +515,7 @@ pywin32>=306            # Windows service support
 - [ ] Quarantine works for test files
 - [ ] Cache speeds up repeat scans
 - [ ] API keys work (if configured)
-- [ ] Free fallback works (without keys)
+- [ ] Unknown verdicts quarantine
 - [ ] Frontend connects via IPC
 - [ ] All UI buttons respond
 
@@ -526,7 +525,7 @@ pywin32>=306            # Windows service support
 
 ✅ **Backend fully implemented and functional**
 
-- ✅ Hybrid API system (premium + free fallback)
+- ✅ Key-gated API system (MB/VT required, ThreatFox optional)
 - ✅ File monitoring and threat detection
 - ✅ Quarantine system
 - ✅ Logging system

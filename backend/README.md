@@ -5,8 +5,8 @@ A real-time file monitoring and threat detection service for Windows. Scans down
 ## Features
 
 ✅ **Real-time file monitoring** - Watches folders for new/modified files
-✅ **Multi-API threat detection** - Uses MalwareBazaar, VirusTotal, and free fallback APIs
-✅ **Hybrid approach** - Works with or without API keys
+✅ **Multi-API threat detection** - Uses MalwareBazaar and VirusTotal (API keys required)
+✅ **Hybrid approach** - Works without keys but will mark unknown/quarantine when no verdict
 ✅ **Automatic quarantine** - Isolates detected threats
 ✅ **Logging** - Detailed scan results in `~/HashGuardDemo/logs/`
 ✅ **IPC communication** - Integrates with frontend via socket IPC
@@ -28,7 +28,7 @@ monitor.py
   ├─ MB_API_lookup_hash(): MalwareBazaar queries
   ├─ VT_API_lookup_hash(): VirusTotal queries
   ├─ CP_API_lookup_hash(): Custom API placeholder
-  ├─ free_API_lookup_hash(): Free fallback
+  ├─ free_API_lookup_hash(): ThreatFox lookup (requires THREATFOX_API_KEY if enabled)
   ├─ cache_*(): Local SQLite caching
   └─ Quarantine(): Moves suspicious files to ~/HashGuardDemo/quarantine/
 
@@ -57,10 +57,12 @@ Copy `.env.example` to `.env`:
 Copy-Item .env.example .env
 ```
 
-Edit `.env` with your API keys (optional):
+Edit `.env` with your API keys (recommended):
 ```
 MALWAREBAZAAR_API_KEY=your-key-here
 VIRUSTOTAL_API_KEY=your-key-here
+# Optional ThreatFox key for fallback
+# THREATFOX_API_KEY=your-key-here
 ```
 
 ### 3. Run the Backend
@@ -145,14 +147,14 @@ When a file is scanned:
 
 1. **Check cache** - If hash was recently analyzed, use cached verdict
 2. **Query APIs** (in order):
-   - MalwareBazaar (if API key configured)
-   - VirusTotal (if API key configured)
-   - Custom API (placeholder)
-   - Free Fallback (always available)
+  - MalwareBazaar (requires API key)
+  - VirusTotal (requires API key)
+  - Custom API (placeholder)
+  - ThreatFox (optional fallback; requires THREATFOX_API_KEY if used)
 3. **Combine verdicts**:
-   - If ANY API says "malicious" → quarantine the file
-   - If all say "clean" → allow the file
-   - If no APIs respond → treat as "clean" (safe default)
+  - If ANY API says "malicious" → quarantine the file
+  - If all say "clean" → allow the file
+  - If no APIs respond → mark "unknown" and quarantine
 4. **Cache result** - Store verdict for faster future lookups
 
 ## File Paths

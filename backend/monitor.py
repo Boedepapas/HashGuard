@@ -440,7 +440,7 @@ def MB_API_lookup_hash(hash_hex: str) -> Optional[str]:
         return None  # API key not configured, skip this service
     
     url = "https://mb-api.abuse.ch/api/v1/"
-    headers = {"API-KEY": auth_key}
+    headers = {"Auth-Key": auth_key}
     data = {"query": "get_info", "hash": hash_hex}
     
     try:
@@ -492,13 +492,19 @@ def VT_API_lookup_hash(hash_hex: str) -> Optional[str]:
 
 def free_API_lookup_hash(hash_hex: str) -> Optional[str]:
     """
-    Free fallback API lookup using ThreatFox (no key required).
-    Returns 'malicious' if hash is found, otherwise 'clean'.
+    ThreatFox lookup (requires THREATFOX_API_KEY).
+    Returns 'malicious' if hash is found, 'clean' otherwise, None on error/missing key.
     """
     try:
+        tf_key = os.getenv("THREATFOX_API_KEY")
+        if not tf_key:
+            print("Free API fallback disabled: THREATFOX_API_KEY not set.")
+            return None
+        headers = {"API-KEY": tf_key}
         resp = requests.post(
             "https://threatfox-api.abuse.ch/api/v1/",
             json={"query": "search_hash", "hash": hash_hex},
+            headers=headers,
             timeout=8,
         )
         if resp.status_code == 401:
