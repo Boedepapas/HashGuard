@@ -6,8 +6,8 @@ Window {
     id: root
     visible: true
     title: "HashGuard"
-    width: 800
-    height: 600
+    width: Constants.width
+    height: Constants.height
 
     // Single source of truth for navigation
     property string currentPage: "HomeScreen.qml"

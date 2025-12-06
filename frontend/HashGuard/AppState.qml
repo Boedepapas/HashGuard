@@ -17,8 +17,13 @@ QtObject {
     //logs page properties
     property var alertList: [] // list of current alerts
     property var logEntries: [] // recent log entries
+    property string logText: ""
+    property string alertText: ""
     //quarantine page properties
-    property var quarantineItems: [] // items in quarantine
+    property var quarantineItems: [{id: "file1" , name: "Quarantined file1", timestamp:"12/5/2025"},{id: "file2" , name: "Quarantined file2", timestamp:"12/5/2025"}] //{id: "file1" , name: "Quarantined file1", timestamp:"12/5/2025"}
+    property int quarantineItemCount: 1
+    property string deleteFileID: ""
+    // items in quarantine
     //settings page properties
 
     

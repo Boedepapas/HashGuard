@@ -94,9 +94,9 @@ Item {
                         // Attach a single handler that toggles the AppState property
                         // Do not add dynamic properties to startBtn; rely on handlersAttached to avoid duplicates
                         startBtn.clicked.connect(function() {
-                            console.log("[HomeScreen] startBtn clicked. AppState.scanning before ->", AppState.scanning)
-                            AppState.scanning = !AppState.scanning
-                            console.log("[HomeScreen] AppState.scanning after ->", AppState.scanning)
+                            console.log("[HomeScreen] startBtn clicked. AppState.scanning before ->", AppState.isScanning)
+                            AppState.isScanning = !AppState.isScanning
+                            console.log("[HomeScreen] AppState.scanning after ->", AppState.isScanning)
                         })
                         console.log("[HomeScreen] startBtn click handler attached")
                     } else {

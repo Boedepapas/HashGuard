@@ -10,6 +10,7 @@ import QtQuick
 import QtQuick.Controls
 import HashGuard
 import QtQuick.Studio.DesignEffects
+import QtQuick.Layouts
 
 Rectangle {
     id: background
@@ -18,7 +19,7 @@ Rectangle {
     color: "#c1c0c0"
     border.width: 1
 
-    property string requestedNavigate: ""
+    property string requestedNavigation: ""
 
     Rectangle {
         id: topBar
@@ -28,26 +29,17 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: 0
-        anchors.rightMargin: 0
-        anchors.topMargin: 0
-        anchors.bottomMargin: 935
+        height: Math.max(48, Math.min(parent.height * 0.08, 120))
         topRightRadius: 0
         topLeftRadius: 0
 
         Text {
             id: titleHG
             text: qsTr("HashGuard")
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 173
-            anchors.rightMargin: 1290
-            anchors.topMargin: 21
-            anchors.bottomMargin: 22
-            font.pixelSize: 80
+            anchors.left: logoHG.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: 12
+            font.pixelSize: Math.max(20, Math.min(parent.height * 0.75, 80))
             font.styleName: "Bold"
             font.family: "Tahoma"
             font.bold: true
@@ -56,25 +48,21 @@ Rectangle {
         Image {
             id: logoHG
             anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 0
-            anchors.rightMargin: 1745
-            anchors.topMargin: 0
-            anchors.bottomMargin: 0
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: 12
+            height: parent.height
             source: "../HG_Logo.png"
             fillMode: Image.PreserveAspectFit
 
             Button {
                 id: homeScreen
-                x: 0
-                y: 0
-                width: 175
-                height: 145
                 opacity: 0
                 visible: true
                 text: qsTr("Button")
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
                 onClicked: background.requestedNavigate = "home"
             }
         }
@@ -83,152 +71,135 @@ Rectangle {
             id: pagebar
             color: "#d62626"
             radius: 20
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 684
-            anchors.rightMargin: 36
-            anchors.topMargin: 12
-            anchors.bottomMargin: 13
-
-            Rectangle {
-                id: homepagebuttonImage
-                color: "#ffffff"
-                radius: 20
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: 15
-                anchors.rightMargin: 903
-                anchors.topMargin: 10
-                anchors.bottomMargin: 10
-
-                Text {
-                    id: homepagebuttonText
-                    text: qsTr("Home")
-                    anchors.fill: parent
-                    font.pixelSize: 50
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    font.styleName: "Bold"
-                    font.family: "Tahoma"
-                }
-
-                MouseArea {
-                    id: home_page_mouse_area
-                    anchors.fill: parent
-                    onClicked: background.requestedNavigate = "home"
-                }
+            anchors {
+                left: titleHG.right
+                leftMargin: 12
+                right: parent.right
+                top: parent.top
+                bottom: parent.bottom
             }
+            height: topBar.height * 0.7
 
-            Rectangle {
-                id: logspagebuttonImage
-                color: "#c1c0c0"
-                radius: 20
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: 311
-                anchors.rightMargin: 607
-                anchors.topMargin: 10
-                anchors.bottomMargin: 10
+            RowLayout {
+                id: rowLayout
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 12
+                Rectangle {
+                    id: homepagebuttonImage
+                    color: "#ffffff"
+                    radius: 12
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: parent.height
+                    height: Layout.preferredHeight
 
-                Text {
-                    id: logspagebuttonText
-                    text: qsTr("Logs and Alerts")
-                    anchors.fill: parent
-                    font.pixelSize: 43
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    wrapMode: Text.Wrap
-                    font.styleName: "Bold"
-                    font.family: "Tahoma"
-                }
-            }
+                    Text {
+                        anchors.fill: parent
+                        text: qsTr("Home")
+                        font.pixelSize: Math.max(12, Math.round(
+                                                     parent.height * 0.65))
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.styleName: "Bold"
+                        font.family: "Tahoma"
+                        font.bold: true
+                    }
 
-            Rectangle {
-                id: quarantinepagebuttonImage
-                color: "#ffffff"
-                radius: 20
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: 607
-                anchors.rightMargin: 311
-                anchors.topMargin: 10
-                anchors.bottomMargin: 10
-
-                Text {
-                    id: quarantinepagebuttonText
-                    text: qsTr("Quarantine")
-                    anchors.fill: parent
-                    font.pixelSize: 45
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    font.styleName: "Bold"
-                    font.family: "Tahoma"
+                    MouseArea {
+                        id: home_page_mouse_area
+                        anchors.fill: parent
+                        onClicked: background.requestedNavigation = "logs"
+                    }
                 }
 
-                MouseArea {
-                    id: quarantine_page_mouse_area
-                    anchors.fill: parent
-                    onClicked: background.requestedNavigate = "quarantine"
-                }
-            }
+                Rectangle {
+                    id: logspagebuttonImage
+                    color: "#c1c0c0"
+                    radius: 12
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: parent.height
 
-            Rectangle {
-                id: settingspagebuttonImage
-                color: "#ffffff"
-                radius: 20
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: 903
-                anchors.rightMargin: 15
-                anchors.topMargin: 10
-                anchors.bottomMargin: 10
-
-                Text {
-                    id: settingspagebuttonText
-                    text: qsTr("Settings")
-                    anchors.fill: parent
-                    font.pixelSize: 50
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    font.styleName: "Bold"
-                    font.family: "Tahoma"
+                    Text {
+                        anchors.fill: parent
+                        text: qsTr("Logs and Alerts")
+                        font.pixelSize: Math.max(12, Math.round(
+                                                     parent.height * 0.32))
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        wrapMode: Text.Wrap
+                        font.styleName: "Bold"
+                        font.family: "Tahoma"
+                        font.bold: true
+                    }
                 }
 
-                MouseArea {
-                    id: settings_page_mouse_area
-                    anchors.fill: parent
-                    onClicked: background.requestedNavigate = "settings"
+                Rectangle {
+                    id: quarantinepagebuttonImage
+                    color: "#ffffff"
+                    radius: 12
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: parent.height
+
+                    Text {
+                        anchors.fill: parent
+                        text: qsTr("Quarantine")
+                        font.pixelSize: Math.max(12, Math.round(
+                                                     parent.height * 0.32))
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.styleName: "Bold"
+                        font.family: "Tahoma"
+                        font.bold: true
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: background.requestedNavigation = "quarantine"
+                    }
+                }
+
+                Rectangle {
+                    id: settingspagebuttonImage
+                    color: "#ffffff"
+                    radius: 12
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: parent.height
+
+                    Text {
+                        anchors.fill: parent
+                        text: qsTr("Settings")
+                        font.pixelSize: Math.max(12, Math.round(
+                                                     parent.height * 0.35))
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.styleName: "Bold"
+                        font.family: "Tahoma"
+                        font.bold: true
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: background.requestedNavigation = "settings"
+                    }
                 }
             }
         }
     }
-
     Rectangle {
-        id: alerts_menu
+        id: logs_menu
         color: "#e8e7e7"
         border.width: 3
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: 983
-        anchors.rightMargin: 33
-        anchors.topMargin: 298
-        anchors.bottomMargin: 79
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
+        height: parent.height - 400
+        width: parent.width - 400
         Text {
-            id: alerts_info_text
-            text: qsTr("Placement Text (Replace with Alert notifications or some other kind of info)")
-            anchors.fill: parent
+            id: logs_info_title
+            text: qsTr("Logs Since Last Opened")
+            font.bold: true
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
             font.pixelSize: 30
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
@@ -236,29 +207,14 @@ Rectangle {
             padding: 10
             font.family: "Tahoma"
         }
-
-        MouseArea {
-            id: alert_mouse_area
-            anchors.fill: parent
-        }
-    }
-
-    Rectangle {
-        id: logs_menu
-        color: "#e8e7e7"
-        border.width: 3
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: 33
-        anchors.rightMargin: 983
-        anchors.topMargin: 298
-        anchors.bottomMargin: 78
         Text {
             id: logs_info_text
-            text: qsTr("Placement Text (Replace with Alert notifications or some other kind of info)")
-            anchors.fill: parent
+            text: qsTr("Log Text")
+            font.bold: true
+            anchors.top: logs_info_title.bottom
+            anchors.bottom: parent.bottom
+            anchors.right: parent.right
+            anchors.left: parent.left
             font.pixelSize: 30
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.WordWrap
@@ -271,41 +227,5 @@ Rectangle {
             id: logs_mouse_area
             anchors.fill: parent
         }
-    }
-
-    Text {
-        id: text1
-        text: qsTr("Logs")
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: 33
-        anchors.rightMargin: 983
-        anchors.topMargin: 164
-        anchors.bottomMargin: 796
-        font.pixelSize: 80
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        font.bold: true
-        font.family: "Tahoma"
-    }
-
-    Text {
-        id: text2
-        text: qsTr("Alerts")
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: 983
-        anchors.rightMargin: 33
-        anchors.topMargin: 157
-        anchors.bottomMargin: 803
-        font.pixelSize: 80
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        font.bold: true
-        font.family: "Tahoma"
     }
 }

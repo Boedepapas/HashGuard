@@ -10,6 +10,7 @@ import QtQuick
 import QtQuick.Controls
 import HashGuard
 import QtQuick.Studio.DesignEffects
+import QtQuick.Layouts
 
 Rectangle {
     id: background
@@ -28,26 +29,17 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: 0
-        anchors.rightMargin: 0
-        anchors.topMargin: 0
-        anchors.bottomMargin: 935
+        height: Math.max(48, Math.min(parent.height * 0.08, 120))
         topRightRadius: 0
         topLeftRadius: 0
 
         Text {
             id: titleHG
             text: qsTr("HashGuard")
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 173
-            anchors.rightMargin: 1290
-            anchors.topMargin: 21
-            anchors.bottomMargin: 22
-            font.pixelSize: 80
+            anchors.left: logoHG.right
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: 12
+            font.pixelSize: Math.max(20, Math.min(parent.height * 0.75, 80))
             font.styleName: "Bold"
             font.family: "Tahoma"
             font.bold: true
@@ -56,13 +48,9 @@ Rectangle {
         Image {
             id: logoHG
             anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 0
-            anchors.rightMargin: 1745
-            anchors.topMargin: 0
-            anchors.bottomMargin: 0
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.leftMargin: 12
+            height: parent.height
             source: "../HG_Logo.png"
             fillMode: Image.PreserveAspectFit
 
@@ -75,10 +63,6 @@ Rectangle {
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
-                anchors.leftMargin: 0
-                anchors.rightMargin: 0
-                anchors.topMargin: 0
-                anchors.bottomMargin: 0
                 onClicked: background.requestedNavigate = "home"
             }
         }
@@ -87,135 +71,116 @@ Rectangle {
             id: pagebar
             color: "#d62626"
             radius: 20
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 684
-            anchors.rightMargin: 36
-            anchors.topMargin: 12
-            anchors.bottomMargin: 13
-
-            Rectangle {
-                id: homepagebuttonImage
-                color: "#ffffff"
-                radius: 20
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: 15
-                anchors.rightMargin: 903
-                anchors.topMargin: 10
-                anchors.bottomMargin: 10
-
-                Text {
-                    id: homepagebuttonText
-                    text: qsTr("Home")
-                    anchors.fill: parent
-                    font.pixelSize: 50
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    font.styleName: "Bold"
-                    font.family: "Tahoma"
-                }
-
-                MouseArea {
-                    id: homepage_mouse_area
-                    anchors.fill: parent
-                    onClicked: background.requestedNavigate = "home"
-                }
+            anchors {
+                left: titleHG.right
+                leftMargin: 12
+                right: parent.right
+                top: parent.top
+                bottom: parent.bottom
             }
+            height: topBar.height * 0.7
 
-            Rectangle {
-                id: logspagebuttonImage
-                color: "#ffffff"
-                radius: 20
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: 311
-                anchors.rightMargin: 607
-                anchors.topMargin: 10
-                anchors.bottomMargin: 10
+            RowLayout {
+                id: rowLayout
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 12
+                Rectangle {
+                    id: homepagebuttonImage
+                    color: "#ffffff"
+                    radius: 12
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: parent.height
+                    height: Layout.preferredHeight
 
-                Text {
-                    id: logspagebuttonText
-                    text: qsTr("Logs and Alerts")
-                    anchors.fill: parent
-                    font.pixelSize: 43
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    wrapMode: Text.Wrap
-                    font.styleName: "Bold"
-                    font.family: "Tahoma"
+                    Text {
+                        anchors.fill: parent
+                        text: qsTr("Home")
+                        font.pixelSize: Math.max(12, Math.round(
+                                                     parent.height * 0.65))
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.styleName: "Bold"
+                        font.family: "Tahoma"
+                        font.bold: true
+                    }
+
+                    MouseArea {
+                        id: home_page_mouse_area
+                        anchors.fill: parent
+                        onClicked: background.requestedNavigation = "logs"
+                    }
                 }
 
-                MouseArea {
-                    id: logs_page_mouse_area
-                    x: -296
-                    y: 0
-                    anchors.fill: parent
-                    onClicked: background.requestedNavigate = "logs"
-                }
-            }
+                Rectangle {
+                    id: logspagebuttonImage
+                    color: "#ffffff"
+                    radius: 12
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: parent.height
 
-            Rectangle {
-                id: quarantinepagebuttonImage
-                color: "#c1c0c0"
-                radius: 20
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: 607
-                anchors.rightMargin: 311
-                anchors.topMargin: 10
-                anchors.bottomMargin: 10
-
-                Text {
-                    id: quarantinepagebuttonText
-                    text: qsTr("Quarantine")
-                    anchors.fill: parent
-                    font.pixelSize: 45
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    font.styleName: "Bold"
-                    font.family: "Tahoma"
-                }
-            }
-
-            Rectangle {
-                id: settingspagebuttonImage
-                color: "#ffffff"
-                radius: 20
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: 903
-                anchors.rightMargin: 15
-                anchors.topMargin: 10
-                anchors.bottomMargin: 10
-
-                Text {
-                    id: settingspagebuttonText
-                    text: qsTr("Settings")
-                    anchors.fill: parent
-                    font.pixelSize: 50
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                    font.styleName: "Bold"
-                    font.family: "Tahoma"
+                    Text {
+                        anchors.fill: parent
+                        text: qsTr("Logs and Alerts")
+                        font.pixelSize: Math.max(12, Math.round(
+                                                     parent.height * 0.32))
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        wrapMode: Text.Wrap
+                        font.styleName: "Bold"
+                        font.family: "Tahoma"
+                        font.bold: true
+                    }
                 }
 
-                MouseArea {
-                    id: settings_page_mouse_area
-                    x: -592
-                    y: 0
-                    anchors.fill: parent
-                    onClicked: background.requestedNavigate = "settings"
+                Rectangle {
+                    id: quarantinepagebuttonImage
+                    color: "#c1c0c0"
+                    radius: 12
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: parent.height
+
+                    Text {
+                        anchors.fill: parent
+                        text: qsTr("Quarantine")
+                        font.pixelSize: Math.max(12, Math.round(
+                                                     parent.height * 0.32))
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.styleName: "Bold"
+                        font.family: "Tahoma"
+                        font.bold: true
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: background.requestedNavigation = "quarantine"
+                    }
+                }
+
+                Rectangle {
+                    id: settingspagebuttonImage
+                    color: "#ffffff"
+                    radius: 12
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: parent.height
+
+                    Text {
+                        anchors.fill: parent
+                        text: qsTr("Settings")
+                        font.pixelSize: Math.max(12, Math.round(
+                                                     parent.height * 0.35))
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        font.styleName: "Bold"
+                        font.family: "Tahoma"
+                        font.bold: true
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: background.requestedNavigation = "settings"
+                    }
                 }
             }
         }
@@ -224,487 +189,119 @@ Rectangle {
     Rectangle {
         id: quarantine_area
         color: "#e8e7e7"
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: 45
-        anchors.rightMargin: 511
-        anchors.topMargin: 312
-        anchors.bottomMargin: 105
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.verticalCenter: parent.verticalCenter
+        height: 700
+        width: 1200
 
-        Rectangle {
-            id: quarantine_file1
-            x: 43
-            y: 49
-            visible: true
-            color: "#ffffff"
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 43
-            anchors.rightMargin: 43
-            anchors.topMargin: 49
-            anchors.bottomMargin: 551
+        property int visibleItemCount: AppState.quarantineItemCount
 
-            Text {
-                id: file1_text
-                text: qsTr("Text")
-                anchors.fill: parent
-                font.pixelSize: 20
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                fontSizeMode: Text.Fit
-                font.family: "Tahoma"
-            }
+        ScrollView {
+            id: quarantineScroll
+            anchors.fill: parent
+            clip: true
 
-            MouseArea {
-                id: file1_mouse_area
-                x: -43
-                y: -49
-                anchors.fill: parent
-            }
-        }
+            Column {
+                id: filesColumn
+                width: parent.width
+                spacing: Math.max(8, quarantine_area.height * 0.02)
+                anchors.margins: 12
+                padding: 8
 
-        Rectangle {
-            id: quarantine_file2
-            x: 43
-            y: 137
-            visible: true
-            color: "#ffffff"
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 43
-            anchors.rightMargin: 43
-            anchors.topMargin: 137
-            anchors.bottomMargin: 463
+                Repeater {
+                    id: filesRepeater
+                    model: AppState.quarantineItems
 
-            Text {
-                id: file2_text
-                x: -43
-                y: -137
-                text: qsTr("Text")
-                anchors.fill: parent
-                font.pixelSize: 20
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                fontSizeMode: Text.Fit
-                font.family: "Tahoma"
-            }
+                    delegate: Rectangle {
+                        property var fileInfo: modelData
+                        property int fileIndex: index
+                        signal deleteRequested(int index, string fileID)
 
-            MouseArea {
-                id: file2_mouse_area
-                x: 0
-                y: -88
-                anchors.fill: parent
-            }
-        }
+                        id: fileRect
+                        color: "#ffffff"
+                        radius: 8
+                        width: filesColumn.width - 32
+                        height: Math.max(56, quarantine_area.height * 0.11)
+                        anchors.horizontalCenter: filesColumn.horizontalCenter
+                        border.color: "#dcdcdc"
+                        border.width: 1
+                        anchors.margins: 8
 
-        Rectangle {
-            id: quarantine_file3
-            x: 43
-            y: 223
-            visible: true
-            color: "#ffffff"
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 43
-            anchors.rightMargin: 43
-            anchors.topMargin: 223
-            anchors.bottomMargin: 377
+                        property real iconSize: Math.max(36,
+                                                         fileRect.height * 0.6)
 
-            Text {
-                id: file3_text
-                x: 0
-                y: -86
-                text: qsTr("Text")
-                anchors.fill: parent
-                font.pixelSize: 20
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                fontSizeMode: Text.Fit
-                font.family: "Tahoma"
-            }
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 12
+                            spacing: Math.max(12, fileRect.height * 0.08)
 
-            MouseArea {
-                id: file3_mouse_area
-                x: 0
-                y: -86
-                anchors.fill: parent
-            }
-        }
+                            // Optional left icon or checkbox (remove if you don't want anything on the left)
+                            Rectangle {
+                                id: leftPlaceholder
 
-        Rectangle {
-            id: quarantine_file4
-            x: 43
-            y: 307
-            visible: true
-            color: "#ffffff"
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 43
-            anchors.rightMargin: 43
-            anchors.topMargin: 307
-            anchors.bottomMargin: 293
+                                Layout.preferredWidth: iconSize
+                                Layout.preferredHeight: iconSize
+                                color: "#f6f6f6"
+                                radius: 6
+                                Layout.alignment: Qt.AlignVCenter
+                                Button {
+                                    id: trashBtn
+                                    width: 45
+                                    height: 45
+                                    hoverEnabled: false
+                                    opacity: 0
 
-            Text {
-                id: file4_text
-                x: -43
-                y: -307
-                text: qsTr("Text")
-                anchors.fill: parent
-                font.pixelSize: 20
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                fontSizeMode: Text.Fit
-                font.family: "Tahoma"
-            }
+                                }
 
-            MouseArea {
-                id: file4_mouse_area
-                x: -43
-                y: -307
-                anchors.fill: parent
-            }
-        }
+                                Image {
+                                    id: trashImage
+                                    source: "../trash.png"
+                                    fillMode: Image.PreserveAspectFit
+                                    sourceSize.height: 45
+                                    sourceSize.width: 45
+                                }
+                            }
 
-        Rectangle {
-            id: quarantine_file5
-            x: 43
-            y: 392
-            visible: true
-            color: "#ffffff"
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 43
-            anchors.rightMargin: 43
-            anchors.topMargin: 392
-            anchors.bottomMargin: 208
+                            // Text column takes remaining space and pushes the trash button to the right
+                            Column {
+                                Layout.fillWidth: true
+                                spacing: 4
+                                Layout.alignment: Qt.AlignVCenter
 
-            Text {
-                id: file5_text
-                x: 0
-                y: -85
-                text: qsTr("Text")
-                anchors.fill: parent
-                font.pixelSize: 20
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                fontSizeMode: Text.Fit
-                font.family: "Tahoma"
-            }
+                                Text {
+                                    id: fileTitle
+                                    text: fileInfo.name
+                                    font.pixelSize: Math.max(
+                                                        12,
+                                                        fileRect.height * 0.28)
+                                    font.family: "Tahoma"
+                                    font.bold: true
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
+                                }
 
-            MouseArea {
-                id: file5_mouse_area
-                x: 0
-                y: -85
-                anchors.fill: parent
-            }
-        }
+                                Text {
+                                    id: fileMeta
+                                    text: fileInfo.timestamp
+                                    font.pixelSize: Math.max(
+                                                        10,
+                                                        fileRect.height * 0.20)
+                                    color: "#666666"
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
+                                }
+                            }
+                        }
 
-        Rectangle {
-            id: quarantine_file6
-            x: -2
-            y: 161
-            visible: true
-            color: "#ffffff"
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 43
-            anchors.rightMargin: 43
-            anchors.topMargin: 473
-            anchors.bottomMargin: 127
-
-            Text {
-                id: file6_text
-                x: 0
-                y: 85
-                text: qsTr("Text")
-                anchors.fill: parent
-                font.pixelSize: 20
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                fontSizeMode: Text.Fit
-                font.family: "Tahoma"
-            }
-
-            MouseArea {
-                id: file6_mouse_area
-                x: 0
-                y: -81
-                anchors.fill: parent
-            }
-        }
-
-        Rectangle {
-            id: quarantine_file7
-            x: 43
-            y: 558
-            visible: true
-            color: "#ffffff"
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 43
-            anchors.rightMargin: 43
-            anchors.topMargin: 558
-            anchors.bottomMargin: 42
-
-            Text {
-                id: file7_text
-                x: 0
-                y: -85
-                text: qsTr("Text")
-                anchors.fill: parent
-                font.pixelSize: 20
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                fontSizeMode: Text.Fit
-                font.family: "Tahoma"
-            }
-
-            MouseArea {
-                id: file7_mouse_area
-                x: 0
-                y: -85
-                anchors.fill: parent
-            }
-        }
-    }
-
-    Text {
-        id: quarantine_text
-        text: qsTr("Quarantined Files")
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: 421
-        anchors.rightMargin: 887
-        anchors.topMargin: 170
-        anchors.bottomMargin: 792
-        font.pixelSize: 57
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        font.family: "Tahoma"
-        font.styleName: "Bold"
-    }
-
-    Rectangle {
-        id: quarantine_button_page
-        opacity: 1
-        visible: false
-        color: "#e8e7e7"
-        radius: 40
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: 1454
-        anchors.rightMargin: 37
-        anchors.topMargin: 312
-        anchors.bottomMargin: 63
-
-        Rectangle {
-            id: delete_button
-            visible: true
-            color: "#e8e7e7"
-            radius: 40
-            border.width: 1
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 35
-            anchors.rightMargin: 35
-            anchors.topMargin: 34
-            anchors.bottomMargin: 575
-
-            Text {
-                id: delete_text
-                color: "#f90a0a"
-                text: qsTr("Delete File")
-                anchors.fill: parent
-                font.pixelSize: 50
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                font.styleName: "Bold"
-                font.family: "Tahoma"
-            }
-
-            Button {
-                id: delete_button_clickable
-                visible: false
-                text: qsTr("Button")
-                anchors.fill: parent
-            }
-        }
-
-        Rectangle {
-            id: unquarantine_button
-            color: "#e8e7e7"
-            radius: 40
-            border.width: 1
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 35
-            anchors.rightMargin: 35
-            anchors.topMargin: 169
-            anchors.bottomMargin: 440
-
-            Text {
-                id: unquarantine_text
-                color: "#20c00a"
-                text: qsTr("Un-Quarantine")
-                anchors.fill: parent
-                font.pixelSize: 45
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                font.styleName: "Bold"
-                font.family: "Tahoma"
-            }
-
-            Button {
-                id: unquarantine_button_clickable
-                visible: false
-                text: qsTr("Button")
-                anchors.fill: parent
-            }
-        }
-
-        Rectangle {
-            id: inspect_button
-            color: "#e8e7e7"
-            radius: 40
-            border.width: 1
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 35
-            anchors.rightMargin: 35
-            anchors.topMargin: 305
-            anchors.bottomMargin: 304
-
-            Text {
-                id: inspect_text
-                text: qsTr("Inspect")
-                anchors.fill: parent
-                font.pixelSize: 50
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                font.family: "Tahoma"
-                font.styleName: "Bold"
-            }
-
-            Button {
-                id: inspect_button_clickable
-                visible: false
-                text: qsTr("Button")
-                anchors.fill: parent
-            }
-        }
-
-        Rectangle {
-            id: recheck_button
-            color: "#e8e7e7"
-            radius: 40
-            border.width: 1
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 35
-            anchors.rightMargin: 35
-            anchors.topMargin: 440
-            anchors.bottomMargin: 169
-
-            Text {
-                id: recheck_text
-                text: qsTr("Recheck")
-                anchors.fill: parent
-                font.pixelSize: 50
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                font.styleName: "Bold"
-                font.family: "Tahoma"
-            }
-
-            Button {
-                id: recheck_button_clickable
-                visible: false
-                text: qsTr("Button")
-                anchors.fill: parent
-            }
-        }
-
-        Rectangle {
-            id: page_turner
-            visible: true
-            color: "#e8e7e7"
-            radius: 40
-            border.width: 1
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.bottom: parent.bottom
-            anchors.leftMargin: 35
-            anchors.rightMargin: 35
-            anchors.topMargin: 568
-            anchors.bottomMargin: 41
-            Text {
-                id: page_tuner_text
-                color: "#000000"
-                text: qsTr("<   Page   >")
-                anchors.fill: parent
-                font.pixelSize: 50
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                font.styleName: "Bold"
-                font.family: "Tahoma"
-            }
-
-            Button {
-                id: page_turner_back_button
-                visible: false
-                text: qsTr("Button")
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: 8
-                anchors.rightMargin: 251
-                anchors.topMargin: 0
-                anchors.bottomMargin: 0
-            }
-
-            Button {
-                id: page_turner_forward_button
-                visible: false
-                text: qsTr("Button")
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: 255
-                anchors.rightMargin: 4
-                anchors.topMargin: 0
-                anchors.bottomMargin: 0
-            }
-        }
-    }
+                        // allow the ScrollView's flickable to steal drags so scrolling works
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            preventStealing: false
+                        }
+                    } // end delegate Rectangle
+                } // end Repeater
+            } // end Column
+        } // end ScrollView
+    } // end quarantine_area Rectangle
 }
