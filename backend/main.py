@@ -98,6 +98,14 @@ def main():
     # Initialize logger with the configured path
     set_logs_dir(LOGS_PATH)
     
+    # Print file counts on startup
+    try:
+        logs_count = len(list(Path(LOGS_PATH).glob('**/*.json')))
+        quarantine_count = len([f for f in Path(QUARANTINE_PATH).iterdir() if f.is_file() and not f.name.endswith('.meta.json')])
+        print(f"[Backend] Startup: {logs_count} log files, {quarantine_count} quarantined files")
+    except Exception as e:
+        print(f"[Backend] Could not count files: {e}")
+    
     out_queue = queue.PriorityQueue()
     observer = Observer()
     stop_event = threading.Event()
@@ -146,7 +154,8 @@ def main():
         exe.shutdown(wait=False, cancel_futures=True)
         ipc_server.stop()
         observer.stop()
-        observer.join()
+        observer.join(timeout=2)  # Don't block forever
+        print("Shutdown complete")
 
 
 if __name__ == "__main__":

@@ -27,6 +27,11 @@ import time
 
 def get_backend_path() -> Path:
     """Get path to backend directory."""
+    # If backend_helper.py is in the backend directory, return parent dir
+    backend_helper_dir = Path(__file__).parent
+    if backend_helper_dir.name == "backend":
+        return backend_helper_dir
+    
     # Try multiple possible locations
     possible_paths = [
         Path(__file__).parent / "backend",  # Same directory as this file

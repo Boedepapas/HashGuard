@@ -16,8 +16,8 @@ from ipc import IPCClient
 
 
 # Graph/icon sizes
-BOX_W, BOX_H = 60, 60        # Graph box size (fits in your frame)
-ICON_SIZE = (48, 48)         # icon size inside the box
+BOX_W, BOX_H = 85, 85        # Graph box size (increased from 80x80)
+ICON_SIZE = (70, 70)         # icon size inside the box (increased from 65x65)
 _photo_refs = {}     # keep PhotoImage references here so they are not garbage collected
 FRAME_W = 170            # frame width (same as your Settings frame)
 FRAME_H = 110            # frame height (same as your Settings frame)
@@ -27,6 +27,7 @@ right_col_w = FRAME_W - left_col_w
 
 # ---------- Paths ----------
 HERE = os.path.dirname(os.path.abspath(__file__))
+HASHGUARD_ROOT = Path(HERE).parent  # Root HashGuard folder
 IMAGE_DIR  = os.path.join(HERE, "graphics")
 START_IMG = os.path.join(IMAGE_DIR, "start_image.png")
 STOP_IMG = os.path.join(IMAGE_DIR, "stop_image.png")
@@ -38,13 +39,12 @@ print("DEBUG: start exists:", os.path.exists(START_IMG))
 print("DEBUG: stop exists: ", os.path.exists(STOP_IMG))
 
 # ---------- Configuration ----------
-BASE_DIR = BACKEND_DIR
-QUARANTINE_DIR = BASE_DIR / "quarantine"
-LOGS_DIR = BASE_DIR / "logs"
-UI_CONFIG = BASE_DIR / "ui_config.json"
+QUARANTINE_DIR = HASHGUARD_ROOT / "quarantine"
+LOGS_DIR = HASHGUARD_ROOT / "logs" / "logsText"  # Point to monthly text logs
+UI_CONFIG = HASHGUARD_ROOT / "ui_config.json"
 POLL_INTERVAL = 1.0
 
-print("Using BASE_DIR:", BASE_DIR)
+print("Using HASHGUARD_ROOT:", HASHGUARD_ROOT)
 print("Using QUARANTINE_DIR:", QUARANTINE_DIR)
 print("Using LOGS_DIR:", LOGS_DIR)
 print("Using UI_CONFIG:", UI_CONFIG)
@@ -54,7 +54,6 @@ print("Using UI_CONFIG:", UI_CONFIG)
 
 os.makedirs(QUARANTINE_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
-os.makedirs(BASE_DIR, exist_ok=True)
 
 logs = sorted(p.name for p in LOGS_DIR.iterdir() if p.is_file())
 quar = sorted(p.name for p in QUARANTINE_DIR.iterdir() if p.is_file())
@@ -83,13 +82,13 @@ class HashGuardBackend:
         if self.connected:
             return True
         if not ensure_backend_running(verbose=True):
-            self.window.write_event_value("-BACKEND-STATUS-", "error:unreachable")
+            self.window.write_event_value("-SETTINGS-STATUS-", "unreachable")
             return False
         if self.client.connect():
             self.connected = True
-            self.window.write_event_value("-BACKEND-STATUS-", "connected")
+            self.window.write_event_value("-SETTINGS-STATUS-", "connected")
             return True
-        self.window.write_event_value("-BACKEND-STATUS-", "error:connect")
+        self.window.write_event_value("-SETTINGS-STATUS-", "connect failed")
         return False
 
     def start_scan(self):
@@ -123,8 +122,11 @@ class HashGuardBackend:
             return False
         resp = self.client.send_command({"type": "set_watch_path", "path": folder_path})
         if resp and resp.get("status") == "ok":
-            self.window.write_event_value("-BACKEND-UPDATE-", "path_changed")
+            self.window.write_event_value("-SETTINGS-STATUS-", f"watching: {folder_path}")
             return True
+        # Show popup for failure instead of changing connection status
+        import PySimpleGUI4 as sg
+        sg.popup("Failed to set watch path", title="Error", background_color="#d62626")
         return False
 
     def get_status(self):
@@ -179,7 +181,7 @@ def draw_centered_with_pillow(graph_elem, image_path, icon_size, ref_key):
         canvas.create_image(cx, cy, image=photo, anchor="center", tags=(tag,))
         _photo_refs[ref_key] = photo
     except Exception as e:
-        print("DEBUG: draw_centered_with_pillow failed:", e)
+        print("ERROR: draw_centered_with_pillow failed:", e)
     
 def clear_icon_tag(graph_elem, ref_key):
     try:
@@ -218,13 +220,15 @@ scanner_column = sg.Column(
         [sg.Text("", key="-STATUS-",
                  background_color=FRAME_BG,
                  text_color=BTN_FG,
-                 font=("Segoe UI", 9),
-                 pad=(0, 0))]                 # no extra top pad
+                 font=("Segoe UI", 10, "bold"),
+                 size=(8, 1),                 # Fixed width to prevent shifting
+                 justification="center",      # Center text within fixed width
+                 pad=(0, 0))]                 # no extra padding for alignment
     ],
     background_color=FRAME_BG,
     vertical_alignment="top",                # <-- use top so rows stack at top
-    element_justification="left",
-    size=(None, None),
+    element_justification="center",          # Center align both texts
+    size=(75, None),
     pad=(6, 0)
 )
 
@@ -241,9 +245,9 @@ graph_column = sg.Column(
     [[start_graph]],
     background_color=FRAME_BG,
     vertical_alignment="center",
-    element_justification="center",
+    element_justification="left",
     size=(right_col_w, FRAME_H),
-    pad=(0,0)
+    pad=(0,0)  # Shift left by positioning at edge
 )
 
 start_frame = [
@@ -252,8 +256,7 @@ start_frame = [
 
 settings_frame = [
     [sg.Text("Settings", background_color=FRAME_BG, text_color=BTN_FG, font=("Segoe UI", 10, "bold"))],
-    [sg.Text("Downloads:", background_color=FRAME_BG, text_color=BTN_FG),
-     sg.Text("", key="-DLNAME-", background_color=FRAME_BG, text_color=BTN_FG)],
+    [sg.Text("", key="-CONNECTION-STATUS-", background_color=FRAME_BG, text_color=BTN_FG, font=("Segoe UI", 9), size=(20, 1))],
     [sg.Button("Downloads", key="-DOWNLOADS-", button_color=(BTN_FG, BTN_BG))],
     [sg.Button("Connect", key="-CONNECT-", button_color=(BTN_FG, BTN_BG))]
 ]
@@ -305,20 +308,44 @@ ch = graph.TKCanvas.winfo_height()
 
 # draw now if canvas is ready, otherwise defer to event loop
 if cw > 1 and ch > 1:
-    draw_centered_with_pillow(graph, START_IMG, ICON_SIZE, "main")
     need_initial_draw = False
 else:
     need_initial_draw = True
 
-if os.path.exists(START_IMG):
-    draw_centered_with_pillow(graph, START_IMG, ICON_SIZE, "main")
-else:
-    # fallback: show text in status if no image
-    set_status("idle")
+# Set initial status
+set_status("Idle")
 
 # ---------- Start backend bridge ----------
 backend = HashGuardBackend(window)
-backend.connect()
+
+# Initialize connection status and check scanning state
+scanning = False
+if backend.connect():
+    window["-CONNECTION-STATUS-"].update("connected")
+    
+    # Check if backend is already scanning
+    status = backend.get_status()
+    if status and status.get("scanning"):
+        scanning = True
+        set_status("Running")
+    else:
+        scanning = False
+        set_status("Idle")
+else:
+    window["-CONNECTION-STATUS-"].update("not connected")
+
+# Now draw the correct image based on scanning state
+if scanning:
+    safe_set_stop_image()
+else:
+    safe_set_start_image()
+
+# Force canvas to update
+try:
+    graph.TKCanvas.update_idletasks()
+    window.refresh()
+except Exception as e:
+    print(f"ERROR: Failed to refresh canvas: {e}")
 
 # ---------- Helpers ----------
 def request_backend_delete(name):
@@ -339,19 +366,35 @@ def request_backend_delete(name):
 
 def list_dir_names(folder, skip_meta=False):
     try:
+        os.makedirs(folder, exist_ok=True)  # Ensure folder exists
         entries = []
         for item in os.listdir(folder):
             if skip_meta and item.endswith(".meta.json"):
                 continue
             entries.append(item)
         return sorted(entries)
-    except Exception:
+    except Exception as e:
+        print(f"Error listing {folder}: {e}")
         return []
 
+# Cache for list contents to avoid unnecessary refreshes
+_last_logs_list = []
+_last_quarantine_list = []
 
 def refresh_lists():
-    window["-LOGS-"].update(list_dir_names(LOGS_DIR))
-    window["-QUARANTINE-"].update(list_dir_names(QUARANTINE_DIR, skip_meta=True))
+    """Only refresh lists if they've actually changed."""
+    global _last_logs_list, _last_quarantine_list
+    
+    new_logs = list_dir_names(LOGS_DIR)
+    new_quarantine = list_dir_names(QUARANTINE_DIR, skip_meta=True)
+    
+    if new_logs != _last_logs_list:
+        window["-LOGS-"].update(new_logs)
+        _last_logs_list = new_logs
+    
+    if new_quarantine != _last_quarantine_list:
+        window["-QUARANTINE-"].update(new_quarantine)
+        _last_quarantine_list = new_quarantine
 
 def open_file_with_default_app(path):
     if sys.platform.startswith("win"):
@@ -389,8 +432,7 @@ def poller_thread(window, interval):
 poller = threading.Thread(target=poller_thread, args=(window, POLL_INTERVAL), daemon=True)
 poller.start()
 
-# initialize start button image (in case fallback created a text button earlier)
-safe_set_start_image()
+# NOTE: Image is already drawn above based on backend scanning state, don't override it here
 
 # ---------- Event loop ----------
 scanning = False
@@ -428,36 +470,25 @@ while True:
         status = values[event]
         if status == "started":
             scanning = True
-            set_status("scanning")
+            set_status("Running")
             safe_set_stop_image()
         elif status == "stopped":
             scanning = False
-            set_status("idle")
+            set_status("Idle")
             safe_set_start_image()
-        elif status == "connected":
-            set_status("connected")
-        elif status.startswith("error:"):
-            set_status(status)
-        elif status.startswith("config_set:"):
-            cfgpath = status.split(":",1)[1]
-            window["-CFGNAME-"].update(os.path.basename(cfgpath))
+
+    if event == "-SETTINGS-STATUS-":
+        status = values[event]
+        window["-CONNECTION-STATUS-"].update(status)
 
     if event == "-DOWNLOADS-":
         folder = sg.popup_get_folder("Select Downloads Folder", no_window=True)
         if folder:
-            # Tell backend to open browse for folder and set downloads path
-            if backend.set_downloads_folder(folder):
-                window["-DLNAME-"].update(folder)
-                set_status("watch path set")
-            else:
-                set_status("failed to set path")
+            # Tell backend to set downloads path
+            backend.set_downloads_folder(folder)
 
     if event == "-CONNECT-":
-        set_status("Connecting...")
-        if backend.connect():
-            set_status("connected")
-        else:
-            set_status("connect failed")
+        backend.connect()
 
     if event == "-OPENLOG-":
         sel = values["-LOGS-"]

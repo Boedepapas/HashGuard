@@ -23,8 +23,23 @@ def create_test_file(path: str, size_bytes: int = 65536, content: bytes = None) 
 
 def test_backend():
     """Run smoke test: create files, check backend response."""
+    # Get HashGuard root folder (parent of backend)
+    hashguard_root = Path(__file__).parent.parent
+    
+    # Create dedicated test directory
+    test_dir = Path("./test_watch_folder")
+    test_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Clean prior test files
+    for p in test_dir.glob("*"):
+        try:
+            p.unlink()
+        except Exception:
+            pass
+    
     # Clean prior artifacts for a fresh run but keep directories
-    for folder in [Path("./logs/logsText"), Path("./logs"), Path("./quarantine")]:
+    # Use root-level logs and quarantine folders
+    for folder in [hashguard_root / "logs" / "logsText", hashguard_root / "logs", hashguard_root / "quarantine"]:
         if folder.exists():
             for p in folder.glob("*"):
                 if p.is_file():
@@ -44,8 +59,9 @@ def test_backend():
                         pass
         folder.mkdir(parents=True, exist_ok=True)
 
-    watch_path = os.path.expanduser("~/Downloads")
+    watch_path = str(test_dir.absolute())
     print(f"[TEST] Watch path: {watch_path}")
+    print(f"[TEST] Set this path in the frontend Downloads button to test")
     
     # Connect to backend IPC
     client = IPCClient()
@@ -54,6 +70,11 @@ def test_backend():
         return False
     
     print("[TEST] Connected to backend IPC")
+    
+    # Set watch path via IPC
+    print(f"[TEST] Setting backend watch path to: {watch_path}")
+    resp = client.send_command({"type": "set_watch_path", "path": watch_path})
+    print(f"[TEST] Set watch path response: {resp}")
     
     # Check backend status
     status = client.send_command({"type": "get_status"})
@@ -99,9 +120,10 @@ def test_backend():
     print("[TEST] Waiting for files to be processed (20 seconds)...")
     time.sleep(20)
     
-    # Check logs directory
-    logs_dir = Path("./logs")
-    quarantine_dir = Path("./quarantine")
+    # Check logs and quarantine directories at root level
+    hashguard_root = Path(__file__).parent.parent
+    logs_dir = hashguard_root / "logs"
+    quarantine_dir = hashguard_root / "quarantine"
     
     print(f"\n[TEST] Checking logs in: {logs_dir}")
     if logs_dir.exists():

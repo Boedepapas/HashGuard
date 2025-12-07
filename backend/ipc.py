@@ -152,7 +152,9 @@ class IPCClient:
         """Connect to the IPC server."""
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.settimeout(5.0)  # 5 second timeout for connection only
             self.socket.connect((self.host, self.port))
+            self.socket.settimeout(None)  # Remove timeout for normal operations
             print(f"[IPC Client] Connected to {self.host}:{self.port}")
             return True
         except Exception as e:

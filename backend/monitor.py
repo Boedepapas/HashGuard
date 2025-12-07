@@ -35,17 +35,13 @@ CONFIG_PATH = "config.yaml"
 with open(CONFIG_PATH, "r") as f:
     CFG = yaml.safe_load(f)
 
-# Initialize paths - use Program Files if config is empty
-def get_program_files_path():
-    """Get the Program Files directory for HashGuard."""
-    import platform
-    if platform.system() == "Windows":
-        prog_files = os.getenv("ProgramFiles", "C:\\Program Files")
-    else:
-        prog_files = "/opt"
-    return os.path.join(prog_files, "HashGuard")
+# Initialize paths - use HashGuard root folder (parent of backend) for shared data
+def get_hashguard_root():
+    """Get the HashGuard root directory (parent of backend folder)."""
+    backend_dir = Path(__file__).parent
+    return backend_dir.parent
 
-PROGRAM_FILES_PATH = get_program_files_path()
+HASHGUARD_ROOT = get_hashguard_root()
 
 # Watch path - user sets via UI, defaults to user's Downloads if empty
 watch_path_config = CFG.get("watch_path", "").strip()
@@ -55,31 +51,39 @@ else:
     # Default to user's Downloads folder
     WATCH_PATH = os.path.join(os.path.expanduser("~"), "Downloads")
 
-# Quarantine path - created in Program Files
+# Quarantine path - in HashGuard root folder (shared with frontend)
 quarantine_path_config = CFG.get("quarantine_path", "").strip()
 if quarantine_path_config:
     QUARANTINE_PATH = os.path.abspath(quarantine_path_config)
 else:
-    QUARANTINE_PATH = os.path.join(PROGRAM_FILES_PATH, "quarantine")
+    QUARANTINE_PATH = str(HASHGUARD_ROOT / "quarantine")
 
-# Logs path - created in Program Files  
+# Logs path - in HashGuard root folder (shared with frontend)
 logs_path_config = CFG.get("logs_path", "").strip()
 if logs_path_config:
     LOGS_PATH = os.path.abspath(logs_path_config)
 else:
-    LOGS_PATH = os.path.join(PROGRAM_FILES_PATH, "logs")
+    LOGS_PATH = str(HASHGUARD_ROOT / "logs")
 
-# Cache database - created in Program Files
+# Cache database - in backend folder
 cache_db_config = CFG.get("cache_db", "").strip()
 if cache_db_config:
     CACHE_DB = os.path.abspath(cache_db_config)
 else:
-    CACHE_DB = os.path.join(PROGRAM_FILES_PATH, "cache.sqlite")
+    CACHE_DB = str(Path(__file__).parent / "cache.sqlite")
 
 # Create directories if they don't exist
 os.makedirs(QUARANTINE_PATH, exist_ok=True)
 os.makedirs(LOGS_PATH, exist_ok=True)
 os.makedirs(os.path.dirname(CACHE_DB), exist_ok=True)
+
+# Print paths for debugging
+print(f"[Monitor] HASHGUARD_ROOT: {HASHGUARD_ROOT}")
+print(f"[Monitor] WATCH_PATH: {WATCH_PATH}")
+print(f"[Monitor] QUARANTINE_PATH: {QUARANTINE_PATH}")
+print(f"[Monitor] LOGS_PATH: {LOGS_PATH}")
+print(f"[Monitor] CACHE_DB: {CACHE_DB}")
+
 DEBOUNCE_MS = int(CFG.get("debounce_ms", 500))
 STABILITY_SECONDS = int(CFG.get("stability_seconds", 3))
 MIN_SIZE = int(CFG.get("min_size_bytes", 1))
