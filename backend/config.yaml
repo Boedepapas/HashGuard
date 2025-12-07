@@ -1,0 +1,41 @@
+watch_path: ""  # User sets this via UI Downloads button - leave empty, backend will use default Downloads folder
+quarantine_path: ""  # Leave empty to use HashGuard root/quarantine
+logs_path: ""  # Leave empty to use HashGuard root/logs
+min_size_bytes: 65536  # 64 KB minimum to skip tiny files and reduce CPU
+max_size_bytes: 2147483648
+allowed_extensions:
+  - .exe
+  - .msi
+  - .zip
+  - .7z
+  - .pdf
+  - .docx
+  - .js
+blocked_paths:
+  - C:\\Windows\\Temp
+  - C:\\Program Files\\HashGuard
+stability_seconds: 3
+debounce_ms: 500
+worker_count: 2  # Fewer workers to lower CPU usage
+worker_throttle_ms: 75  # Sleep per file to smooth CPU (per worker)
+cache_db: "./logs/cache.sqlite"  # In logs folder
+ignore_name_regex:
+  - '^~\\$'
+  - '\\.crdownload$'
+priority_map:
+  '.exe': 10
+  '.msi': 9
+  '.zip': 7
+  '.7z': 7
+  '.pdf': 5
+
+# API Configuration
+# Get your MalwareBazaar API key from: https://malwarebazaar.abuse.ch/
+# Set via environment variables or .env file:
+#   MALWAREBAZAAR_API_KEY=your-key
+
+apis:
+  malwarebazaar:
+    enabled: true
+    url: "https://api.malwarebazaar.abuse.ch/api/v1/"
+    # API key loaded from MALWAREBAZAAR_API_KEY environment variable
