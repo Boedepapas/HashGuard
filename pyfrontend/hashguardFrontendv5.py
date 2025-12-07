@@ -31,12 +31,9 @@ HASHGUARD_ROOT = Path(HERE).parent  # Root HashGuard folder
 IMAGE_DIR  = os.path.join(HERE, "graphics")
 START_IMG = os.path.join(IMAGE_DIR, "start_image.png")
 STOP_IMG = os.path.join(IMAGE_DIR, "stop_image.png")
+ICON_FILE = os.path.join(IMAGE_DIR, "app_icon.ico")
 
 # debug prints (run from integrated terminal so you see these)
-print("DEBUG: script folder:", HERE)
-print("DEBUG: image folder:", IMAGE_DIR)
-print("DEBUG: start exists:", os.path.exists(START_IMG))
-print("DEBUG: stop exists: ", os.path.exists(STOP_IMG))
 
 # ---------- Configuration ----------
 QUARANTINE_DIR = HASHGUARD_ROOT / "quarantine"
@@ -56,7 +53,7 @@ os.makedirs(QUARANTINE_DIR, exist_ok=True)
 os.makedirs(LOGS_DIR, exist_ok=True)
 
 logs = sorted(p.name for p in LOGS_DIR.iterdir() if p.is_file())
-quar = sorted(p.name for p in QUARANTINE_DIR.iterdir() if p.is_file())
+quar = sorted(p.name for p in QUARANTINE_DIR.iterdir() if p.is_file() and not p.name.endswith('.meta.json'))
 print("Prepared logs list:", logs)
 print("Prepared quarantine list:", quar)
 # ---------- Colors / style ----------
@@ -144,6 +141,7 @@ class HashGuardBackend:
 WINDOW_SIZE = (700, 400)
 COLUMN_WIDTH = 340
 COLUMN_HEIGHT = 370
+icon_path = ICON_FILE if os.path.exists(ICON_FILE) else None
 
 # ---------- Helper to create an image button or fallback to text button ----------
 def make_image_button(key, image_path, fallback_text, button_size=(40, 40)):
@@ -194,8 +192,8 @@ def safe_set_start_image():
         clear_icon_tag(graph, "main")
         if os.path.exists(START_IMG):
             draw_centered_with_pillow(graph, START_IMG, ICON_SIZE, "main")
-    except Exception as e:
-        print("DEBUG: safe_set_start_image failed:", e)
+    except Exception:
+        pass
 
 def safe_set_stop_image():
     """Draw the stop image into the Graph only."""
@@ -203,8 +201,8 @@ def safe_set_stop_image():
         clear_icon_tag(graph, "main")
         if os.path.exists(STOP_IMG):
             draw_centered_with_pillow(graph, STOP_IMG, ICON_SIZE, "main")
-    except Exception as e:
-        print("DEBUG: safe_set_stop_image failed:", e)
+    except Exception:
+        pass
 
 # Refresh logic
 
@@ -265,6 +263,7 @@ logs_frame = [
     [sg.Text("Logs", background_color=FRAME_BG, text_color=BTN_FG, font=("Segoe UI", 11, "bold"))],
     [sg.Listbox(values=logs, size=(40,10), key="-LOGS-", enable_events=True,
                 background_color=LIST_BG, text_color=LIST_FG)],
+    [sg.Button("View Report", key="-OPENLOG-", button_color=(BTN_FG, BTN_BG))]
 ]
 
 quarantine_frame = [
@@ -289,8 +288,18 @@ right_column = sg.Column([[sg.Frame("", quarantine_frame, background_color=FRAME
 
 layout = [[left_column, right_column]]
 
-window = sg.Window("HashGuard Frontend", layout, finalize=True, background_color=BG, size=WINDOW_SIZE, resizable=False)
+window = sg.Window("HashGuard", layout, finalize=True, background_color=BG, size=WINDOW_SIZE, resizable=False)
 graph = window["-GRAPH-"]
+# Set the window icon: prefer an .ico if available, otherwise fall back to start image as PhotoImage
+try:
+    if icon_path:
+        window.set_icon(icon_path)
+    elif os.path.exists(START_IMG):
+        fallback_icon = ImageTk.PhotoImage(Image.open(START_IMG))
+        window.TKroot.iconphoto(False, fallback_icon)
+        _photo_refs["window_icon"] = fallback_icon  # keep ref alive
+except Exception as e:
+    print(f"WARNING: failed to set window icon: {e}")
 print("Window keys:", sorted(window.AllKeysDict.keys()))
 if "-DELETE-" in window.AllKeysDict:
     print("DELETE visible:", window["-DELETE-"].visible, "disabled:", window["-DELETE-"].Disabled)
@@ -387,7 +396,21 @@ def refresh_lists():
     global _last_logs_list, _last_quarantine_list
     
     try:
-        new_logs = list_dir_names(LOGS_DIR)
+        # Get monthly reports from backend database
+        new_logs = []
+        if backend.connected:
+            try:
+                response = backend.client.send_command({"type": "get_monthly_reports"})
+                if response and response.get("status") == "ok":
+                    new_logs = response.get("months", [])
+            except Exception as e:
+                print(f"ERROR querying backend for monthly reports: {e}")
+                # Fallback to reading files if backend fails
+                new_logs = list_dir_names(LOGS_DIR)
+        else:
+            # Fallback if no IPC connection
+            new_logs = list_dir_names(LOGS_DIR)
+        
         new_quarantine = list_dir_names(QUARANTINE_DIR, skip_meta=True)
         
         updated = False
@@ -395,8 +418,11 @@ def refresh_lists():
         # Only update if contents actually changed
         if new_logs != _last_logs_list:
             try:
-                # Update logs listbox with new values
-                window["-LOGS-"].update(new_logs)
+                # Update logs listbox with direct Tkinter manipulation
+                logs_widget = window["-LOGS-"].Widget
+                logs_widget.delete(0, 'end')
+                for item in new_logs:
+                    logs_widget.insert('end', item)
                 _last_logs_list = new_logs
                 updated = True
             except Exception as e:
@@ -404,8 +430,11 @@ def refresh_lists():
         
         if new_quarantine != _last_quarantine_list:
             try:
-                # Update quarantine listbox with new values
-                window["-QUARANTINE-"].update(new_quarantine)
+                # Update quarantine listbox with direct Tkinter manipulation
+                quar_widget = window["-QUARANTINE-"].Widget
+                quar_widget.delete(0, 'end')
+                for item in new_quarantine:
+                    quar_widget.insert('end', item)
                 _last_quarantine_list = new_quarantine
                 updated = True
             except Exception as e:
@@ -451,26 +480,49 @@ def poller_thread(window, interval):
 poller = threading.Thread(target=poller_thread, args=(window, POLL_INTERVAL), daemon=True)
 poller.start()
 
+# Initialize cache variables with what's actually in the listboxes
+if backend.connected:
+    # Get current logs from backend
+    try:
+        response = backend.client.send_command({"type": "get_monthly_reports"})
+        if response and response.get("status") == "ok":
+            _last_logs_list = response.get("months", [])
+        else:
+            _last_logs_list = []
+    except Exception:
+        _last_logs_list = []
+else:
+    _last_logs_list = list_dir_names(LOGS_DIR)
+
+_last_quarantine_list = list_dir_names(QUARANTINE_DIR, skip_meta=True)
+
 # NOTE: Image is already drawn above based on backend scanning state, don't override it here
 
 # ---------- Event loop ----------
 scanning = False
-# Initialize cache on first real iteration
+# Cache is already initialized above after backend connection
 first_loop = True
-initialized_cache = False
 
 while True:
     event, values = window.read(timeout=1000)
     
-    # On first iteration, initialize cache from current filesystem state
-    if not initialized_cache:
-        _last_logs_list = list_dir_names(LOGS_DIR)
-        _last_quarantine_list = list_dir_names(QUARANTINE_DIR, skip_meta=True)
-        initialized_cache = True
-        # Skip processing events on initialization
-        if first_loop:
-            first_loop = False
-            continue
+    # On first iteration, populate logs listbox from backend
+    if first_loop:
+        first_loop = False
+        if backend.connected:
+            try:
+                response = backend.client.send_command({"type": "get_monthly_reports"})
+                if response and response.get("status") == "ok":
+                    months = response.get("months", [])
+                    # Try direct Tkinter manipulation
+                    logs_widget = window["-LOGS-"].Widget
+                    logs_widget.delete(0, 'end')  # Clear existing
+                    for item in months:
+                        logs_widget.insert('end', item)  # Add each item
+                    _last_logs_list = months
+            except Exception:
+                pass
+        continue
 
     if need_initial_draw:
         graph.TKCanvas.update_idletasks()
@@ -522,10 +574,38 @@ while True:
         backend.connect()
 
     if event == "-OPENLOG-":
-        sel = values["-LOGS-"]
-        if sel:
-            path = os.path.join(LOGS_DIR, sel[0])
-            open_file_with_default_app(path)
+        # Get selection directly from Tkinter widget since we manipulate it directly
+        logs_widget = window["-LOGS-"].Widget
+        selection = logs_widget.curselection()
+        
+        if selection:
+            index = selection[0]
+            month_str = logs_widget.get(index)
+            # Query backend for the report
+            try:
+                response = backend.client.send_command({"type": "get_monthly_report", "month": month_str})
+                if response and response.get("status") == "ok":
+                    lines = response.get("lines", [])
+                    # Display in a custom window with scrollable text
+                    report_text = "\n".join(lines) if lines else "(No entries for this month)"
+                    
+                    # Create a simple popup window with scrollable text
+                    layout = [
+                        [sg.Multiline(report_text, size=(80, 20), disabled=True, no_scrollbar=False)],
+                        [sg.Button("Close")]
+                    ]
+                    report_window = sg.Window(f"Log Report - {month_str}", layout, background_color=BG)
+                    while True:
+                        event_r, _ = report_window.read()
+                        if event_r == sg.WIN_CLOSED or event_r == "Close":
+                            break
+                    report_window.close()
+                else:
+                    sg.popup(f"Error: {response.get('message', 'Unknown error')}", title="Error", background_color=BG)
+            except Exception as e:
+                sg.popup(f"Error querying backend: {e}", title="Error", background_color=BG)
+        else:
+            sg.popup("Please select a month from the logs list", title="No Selection", background_color=BG)
 
     if event == "-DELETE-":
         selected = values.get("-QUARANTINE-") or []
@@ -539,15 +619,6 @@ while True:
     
     if event == "-BACKEND-UPDATE-":
         refresh_lists()
-
-
-    if event == "-LOGS-" and values["-LOGS-"]:
-        path = os.path.join(LOGS_DIR, values["-LOGS-"][0])
-        open_file_with_default_app(path)
-
-    if event == "-QUARANTINE-":
-        pass
-
 
 
 window.close()

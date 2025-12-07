@@ -375,7 +375,7 @@ def worker_process_item(item):
     Tries premium APIs first, falls back to free APIs if keys not available.
     Combines verdicts from multiple sources.
     """
-    from logger import write_scan_log, write_quarantine_log, write_event_log
+    from logger import write_scan_log, write_event_log
     from ipc import IPCServer
     
     prio, ts, path, hash_hex = item
@@ -433,14 +433,12 @@ def worker_process_item(item):
     
     if verdict == "malicious":
         print(f"VERDICT malicious {path}")
-        write_quarantine_log(filename, hash_hex, path)
         Quarantine(path)
     elif verdict == "clean":
         print(f"VERDICT clean {path}")
     else:
         print(f"VERDICT unknown {path}")
         write_event_log("unknown_verdict", {"path": path, "hash": hash_hex})
-        write_quarantine_log(filename, hash_hex, path)
         Quarantine(path)
 
     # Throttle to reduce CPU spikes

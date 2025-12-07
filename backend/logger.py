@@ -1,7 +1,6 @@
 """
 Logging module for HashGuard backend.
-Writes scan results and events to the configured logs directory.
-Also maintains monthly aggregated text logs for frontend display.
+Writes scan results to SQLite database and maintains monthly text logs for frontend display.
 """
 
 import json
@@ -11,11 +10,17 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 import threading
 import os
+from database import write_scan_log as db_write_scan_log, initialize_database
 
 
 def init_logs(logs_dir: str):
-    """Initialize logs directory. Called by main.py with configured path."""
+    """Initialize logs directory and database. Called by main.py with configured path."""
     Path(logs_dir).mkdir(parents=True, exist_ok=True)
+    
+    # Initialize SQLite database
+    db_path = str(Path(logs_dir) / "cache.sqlite")
+    initialize_database(db_path)
+    
     return logs_dir
 
 
@@ -69,8 +74,7 @@ def append_to_monthly_log(logs_dir: str, filename: str, verdict: str, hash_hex: 
 def write_scan_log(filename: str, verdict: str, hash_hex: str, 
                    original_path: str, sources: list = None, error: str = None):
     """
-    Write a scan result to the logs directory.
-    Creates both a JSON log and appends to monthly text log.
+    Write a scan result to the SQLite database and monthly text log.
     
     Args:
         filename: Name of the scanned file
@@ -86,74 +90,25 @@ def write_scan_log(filename: str, verdict: str, hash_hex: str,
     Path(LOGS_DIR).mkdir(parents=True, exist_ok=True)
     
     timestamp = time.time()
-    iso_time = datetime.fromtimestamp(timestamp).isoformat()
     
-    log_entry = {
-        "timestamp": timestamp,
-        "iso_time": iso_time,
-        "filename": filename,
-        "verdict": verdict,
-        "hash": hash_hex,
-        "path": original_path,
-        "sources": sources or [],
-        "error": error,
-    }
+    # Write to SQLite database
+    try:
+        db_write_scan_log(filename, verdict, hash_hex, original_path, sources, error)
+    except Exception as e:
+        print(f"[Logger] Error writing to database: {e}")
     
-    # Create JSON log file with timestamp
-    log_filename = f"scan_{int(timestamp)}.json"
-    log_path = Path(LOGS_DIR) / log_filename
+    # Also append to monthly text log for backwards compatibility
+    append_to_monthly_log(LOGS_DIR, filename, verdict, hash_hex, timestamp)
     
-    with LOGS_LOCK:
+    # Broadcast log update to frontend
+    if IPC_SERVER:
         try:
-            with open(log_path, "w", encoding="utf-8") as f:
-                json.dump(log_entry, f, indent=2)
-            
-            # Also append to monthly text log
-            append_to_monthly_log(LOGS_DIR, filename, verdict, hash_hex, timestamp)
-            
-            # Broadcast log update to frontend
-            if IPC_SERVER:
-                try:
-                    IPC_SERVER.broadcast({"type": "log_updated", "action": "added", "filename": filename, "verdict": verdict})
-                except Exception as e:
-                    print(f"Failed to broadcast log update: {e}")
-            
-            return log_path
+            IPC_SERVER.broadcast({"type": "log_updated", "action": "added", "filename": filename, "verdict": verdict})
         except Exception as e:
-            print(f"Error writing scan log: {e}")
-            return None
+            print(f"Failed to broadcast log update: {e}")
+    
+    return True
 
-
-def write_quarantine_log(filename: str, hash_hex: str, original_path: str):
-    """Write a quarantine event to logs."""
-    if LOGS_DIR is None:
-        print("[Logger] WARNING: LOGS_DIR not initialized")
-        return None
-    Path(LOGS_DIR).mkdir(parents=True, exist_ok=True)
-    
-    timestamp = time.time()
-    iso_time = datetime.fromtimestamp(timestamp).isoformat()
-    
-    log_entry = {
-        "timestamp": timestamp,
-        "iso_time": iso_time,
-        "event": "quarantine",
-        "filename": filename,
-        "hash": hash_hex,
-        "original_path": original_path,
-    }
-    
-    log_filename = f"quarantine_{int(timestamp)}.json"
-    log_path = Path(LOGS_DIR) / log_filename
-    
-    with LOGS_LOCK:
-        try:
-            with open(log_path, "w", encoding="utf-8") as f:
-                json.dump(log_entry, f, indent=2)
-            return log_path
-        except Exception as e:
-            print(f"Error writing quarantine log: {e}")
-            return None
 
 
 def write_event_log(event_type: str, details: Dict[str, Any]):
