@@ -100,8 +100,16 @@ def main():
     
     # Print file counts on startup
     try:
-        logs_count = len(list(Path(LOGS_PATH).glob('**/*.json')))
-        quarantine_count = len([f for f in Path(QUARANTINE_PATH).iterdir() if f.is_file() and not f.name.endswith('.meta.json')])
+        # Count JSON log files (only in root, not recursive)
+        logs_count = 0
+        if Path(LOGS_PATH).exists():
+            logs_count = len(list(Path(LOGS_PATH).glob('*.json')))
+        
+        # Count quarantine files (excluding .meta.json files)
+        quarantine_count = 0
+        if Path(QUARANTINE_PATH).exists():
+            quarantine_count = len([f for f in Path(QUARANTINE_PATH).iterdir() if f.is_file() and not f.name.endswith('.meta.json')])
+        
         print(f"[Backend] Startup: {logs_count} log files, {quarantine_count} quarantined files")
     except Exception as e:
         print(f"[Backend] Could not count files: {e}")

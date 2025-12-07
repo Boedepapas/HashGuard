@@ -1,6 +1,6 @@
 watch_path: ""  # User sets this via UI Downloads button - leave empty, backend will use default Downloads folder
-quarantine_path: "./quarantine"  # Same folder as application
-logs_path: "./logs"  # Same folder as application
+quarantine_path: ""  # Leave empty to use HashGuard root/quarantine
+logs_path: ""  # Leave empty to use HashGuard root/logs
 min_size_bytes: 65536  # 64 KB minimum to skip tiny files and reduce CPU
 max_size_bytes: 2147483648
 allowed_extensions:

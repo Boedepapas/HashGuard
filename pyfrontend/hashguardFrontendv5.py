@@ -378,23 +378,45 @@ def list_dir_names(folder, skip_meta=False):
         return []
 
 # Cache for list contents to avoid unnecessary refreshes
-_last_logs_list = []
-_last_quarantine_list = []
+# Initialize with current state so first refresh doesn't think things changed
+_last_logs_list = None
+_last_quarantine_list = None
 
 def refresh_lists():
     """Only refresh lists if they've actually changed."""
     global _last_logs_list, _last_quarantine_list
     
-    new_logs = list_dir_names(LOGS_DIR)
-    new_quarantine = list_dir_names(QUARANTINE_DIR, skip_meta=True)
-    
-    if new_logs != _last_logs_list:
-        window["-LOGS-"].update(new_logs)
-        _last_logs_list = new_logs
-    
-    if new_quarantine != _last_quarantine_list:
-        window["-QUARANTINE-"].update(new_quarantine)
-        _last_quarantine_list = new_quarantine
+    try:
+        new_logs = list_dir_names(LOGS_DIR)
+        new_quarantine = list_dir_names(QUARANTINE_DIR, skip_meta=True)
+        
+        updated = False
+        
+        # Only update if contents actually changed
+        if new_logs != _last_logs_list:
+            try:
+                # Update logs listbox with new values
+                window["-LOGS-"].update(new_logs)
+                _last_logs_list = new_logs
+                updated = True
+            except Exception as e:
+                print(f"ERROR updating logs listbox: {e}")
+        
+        if new_quarantine != _last_quarantine_list:
+            try:
+                # Update quarantine listbox with new values
+                window["-QUARANTINE-"].update(new_quarantine)
+                _last_quarantine_list = new_quarantine
+                updated = True
+            except Exception as e:
+                print(f"ERROR updating quarantine listbox: {e}")
+        
+        # Force window refresh if we updated
+        if updated:
+            window.refresh()
+            
+    except Exception as e:
+        print(f"ERROR in refresh_lists: {e}")
 
 def open_file_with_default_app(path):
     if sys.platform.startswith("win"):
@@ -420,9 +442,6 @@ if os.path.exists(UI_CONFIG):
 if saved_cfg.get("config_path"):
     window["-CFGNAME-"].update(os.path.basename(saved_cfg["config_path"]))
 
-#window["-LOGS-"].update(list_dir_names(LOGS_DIR))
-#window["-QUARANTINE-"].update(list_dir_names(QUARANTINE_DIR))
-
 # ---------- Poller ----------
 def poller_thread(window, interval):
     while True:
@@ -436,10 +455,22 @@ poller.start()
 
 # ---------- Event loop ----------
 scanning = False
-# initial list refresh
-refresh_lists()
+# Initialize cache on first real iteration
+first_loop = True
+initialized_cache = False
+
 while True:
     event, values = window.read(timeout=1000)
+    
+    # On first iteration, initialize cache from current filesystem state
+    if not initialized_cache:
+        _last_logs_list = list_dir_names(LOGS_DIR)
+        _last_quarantine_list = list_dir_names(QUARANTINE_DIR, skip_meta=True)
+        initialized_cache = True
+        # Skip processing events on initialization
+        if first_loop:
+            first_loop = False
+            continue
 
     if need_initial_draw:
         graph.TKCanvas.update_idletasks()
