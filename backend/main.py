@@ -21,6 +21,10 @@ from logger import write_event_log, set_logs_dir, set_ipc_server as logger_set_i
 from database import initialize_database, close_database
 
 
+# Global stop event that can be set by service wrapper
+stop_event = threading.Event()
+
+
 class BackendController:
     """Manages backend state and handles IPC commands."""
     
@@ -149,7 +153,8 @@ def main():
     
     out_queue = queue.PriorityQueue()
     observer = Observer()
-    stop_event = threading.Event()
+    # Use global stop_event (can be set by service wrapper)
+    global stop_event
     
     controller = BackendController(observer=observer)
     controller.out_queue = out_queue

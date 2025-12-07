@@ -26,12 +26,26 @@ right_col_w = FRAME_W - left_col_w
 
 
 # ---------- Paths ----------
-HERE = os.path.dirname(os.path.abspath(__file__))
-HASHGUARD_ROOT = Path(HERE).parent  # Root HashGuard folder
-IMAGE_DIR  = os.path.join(HERE, "graphics")
+# Handle PyInstaller bundled paths
+if getattr(sys, 'frozen', False):
+    # Running as bundled executable
+    BUNDLE_DIR = sys._MEIPASS
+    HASHGUARD_ROOT = Path(os.path.dirname(sys.executable))
+    IMAGE_DIR = os.path.join(BUNDLE_DIR, "frontend", "graphics")
+else:
+    # Running as script
+    HERE = os.path.dirname(os.path.abspath(__file__))
+    HASHGUARD_ROOT = Path(HERE).parent  # Root HashGuard folder
+    IMAGE_DIR = os.path.join(HERE, "graphics")
+
 START_IMG = os.path.join(IMAGE_DIR, "start_image.png")
 STOP_IMG = os.path.join(IMAGE_DIR, "stop_image.png")
 ICON_FILE = os.path.join(IMAGE_DIR, "app_icon.ico")
+
+# Debug: print paths to verify
+print("IMAGE_DIR:", IMAGE_DIR)
+print("START_IMG exists:", os.path.exists(START_IMG))
+print("STOP_IMG exists:", os.path.exists(STOP_IMG))
 
 # debug prints (run from integrated terminal so you see these)
 
@@ -78,14 +92,20 @@ class HashGuardBackend:
     def connect(self):
         if self.connected:
             return True
+        
+        # Try to ensure backend service is running
+        print("[Frontend] Checking if backend service is running...")
         if not ensure_backend_running(verbose=True):
-            self.window.write_event_value("-SETTINGS-STATUS-", "unreachable")
+            print("[Frontend] Backend service not running, may need to start manually")
+            self.window.write_event_value("-SETTINGS-STATUS-", "Service not running")
             return False
+        
+        print("[Frontend] Backend service is running, connecting...")
         if self.client.connect():
             self.connected = True
-            self.window.write_event_value("-SETTINGS-STATUS-", "connected")
+            self.window.write_event_value("-SETTINGS-STATUS-", "Connected")
             return True
-        self.window.write_event_value("-SETTINGS-STATUS-", "connect failed")
+        self.window.write_event_value("-SETTINGS-STATUS-", "Connect failed")
         return False
 
     def start_scan(self):

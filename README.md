@@ -1,289 +1,325 @@
-# HashGuard Backend
+# HashGuard
 
-A real-time file monitoring and threat detection service for Windows. Scans downloads and other directories using multiple threat intelligence APIs.
+Real-time malware detection system using hash-based threat intelligence
+
+![Platform](https://img.shields.io/badge/platform-Windows-blue)
+![Python](https://img.shields.io/badge/python-3.8+-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+HashGuard is a Windows application that monitors file system activity in real-time and checks file hashes against the MalwareBazaar malware intelligence database. Suspicious files are automatically quarantined and logged for review.
 
 ## Features
 
-✅ **Real-time file monitoring** - Watches folders for new/modified files
-✅ **Multi-API threat detection** - Uses MalwareBazaar and VirusTotal (API keys required)
-✅ **Hybrid approach** - Works without keys but will mark unknown/quarantine when no verdict
-✅ **Automatic quarantine** - Isolates detected threats
-✅ **Logging** - Detailed scan results in `~/HashGuardDemo/logs/`
-✅ **IPC communication** - Integrates with frontend via socket IPC
-✅ **Scan control** - Start/stop/pause/resume from frontend
-✅ **Thread-safe** - Handles concurrent file processing
+- **Real-time File Monitoring** - Watches your Downloads folder (or custom path) for new files
+- **MalwareBazaar Integration** - Checks file hashes against abuse.ch's malware database
+- **Windows Service** - Runs in the background as a system service
+- **Automatic Quarantine** - Suspicious files are moved to an isolated directory
+- **GUI Frontend** - Easy-to-use interface for control and monitoring
+- **Smart Caching** - SQLite-based cache prevents redundant API calls
+- **Monthly Logs** - Organized scan history with detailed reports
 
-## Architecture
+---
 
+## Installation
+
+### Step 1: Download
+
+Download the latest `HashGuard_Package.zip` from [GitHub Releases](https://github.com/Boedepapas/HashGuard/releases).
+
+### Step 2: Extract
+
+Extract the ZIP file to a permanent location (e.g., `C:\HashGuard` or `C:\Program Files\HashGuard`).
+
+**Contents of HashGuard_Package:**
 ```
-main.py
-  ├─ BackendController: Manages scan state and IPC commands
-  ├─ IPCServer: Handles frontend communication
-  ├─ Observer: Filesystem event monitoring (watchdog)
-  ├─ FilterHandler: Debounces and filters filesystem events
-  ├─ stability_worker_loop: Ensures files are fully written
-  └─ ThreadPoolExecutor: Parallel hash computation and API queries
-
-monitor.py
-  ├─ MB_API_lookup_hash(): MalwareBazaar queries
-  ├─ VT_API_lookup_hash(): VirusTotal queries
-  ├─ CP_API_lookup_hash(): Custom API placeholder
-  ├─ free_API_lookup_hash(): ThreatFox lookup (requires THREATFOX_API_KEY if enabled)
-  ├─ cache_*(): Local SQLite caching
-  └─ Quarantine(): Moves suspicious files to ~/HashGuardDemo/quarantine/
-
-logger.py
-  ├─ write_scan_log(): Records scan results
-  ├─ write_quarantine_log(): Records quarantine events
-  └─ write_event_log(): Records backend events
-
-ipc.py
-  ├─ IPCServer: Listens on 127.0.0.1:54321
-  └─ IPCClient: For frontend to send commands
+HashGuard_Package/
+    HashGuardBackend.exe    # Backend service executable
+    HashGuard.exe           # GUI application
+    install_service.bat     # Service installer (run as Admin)
+    uninstall_service.bat   # Service uninstaller (run as Admin)
+    config.yaml             # Configuration file (edit this)
+    .env.example            # API key template
+    logs/                   # Scan logs directory
+    quarantine/             # Quarantined files directory
 ```
 
-## Getting Started
+### Step 3: Configure API Key (Required)
 
-### 1. Install Dependencies
+HashGuard requires a MalwareBazaar API key to check file hashes.
 
+1. **Get a free API key:**
+   - Visit [https://bazaar.abuse.ch/](https://bazaar.abuse.ch/)
+   - Create a free account
+   - Go to your account settings and copy your Auth Key
+
+2. **Add the key to HashGuard:**
+   - In the `HashGuard_Package` folder, rename `.env.example` to `.env`
+   - Open `.env` in a text editor
+   - Replace `your-api-key-here` with your actual API key:
+     ```
+     MALWAREBAZAAR_API_KEY=your-actual-api-key
+     ```
+   - Save the file
+
+### Step 4: Install the Windows Service
+
+The backend runs as a Windows service so it can monitor files even when the GUI is closed.
+
+1. **Right-click** on `install_service.bat`
+2. Select **"Run as administrator"**
+3. You should see "Service installed successfully" and "Service started"
+
+**Alternative (Command Prompt):**
 ```powershell
-pip install -r requirements.txt
+# Open Command Prompt as Administrator
+cd C:\path\to\HashGuard_Package
+.\install_service.bat
 ```
 
-### 2. Configure API Keys
+### Step 5: Launch the GUI
 
-Copy `.env.example` to `.env`:
-```powershell
-Copy-Item .env.example .env
-```
+Double-click `HashGuard.exe` to open the graphical interface.
 
-Edit `.env` with your API keys (recommended):
-```
-MALWAREBAZAAR_API_KEY=your-key-here
-VIRUSTOTAL_API_KEY=your-key-here
-# Optional ThreatFox key for fallback
-# THREATFOX_API_KEY=your-key-here
-```
+---
 
-### 3. Run the Backend
+## Usage
 
-#### As Windows Service (Recommended for Production)
-```powershell
-# Install service (one-time, requires admin)
-python hashguard_service.py install
+### Starting and Stopping Scans
 
-# Start the service
-net start HashGuardService
+1. Open `HashGuard.exe`
+2. Click **Connect** to connect to the backend service
+3. Click the **Start** button (play icon) to begin monitoring
+4. Click the **Stop** button to pause monitoring
 
-# Stop the service
-net stop HashGuardService
-```
+### Setting the Watch Folder
 
-#### Standalone (Development)
-```powershell
-python main.py
-```
+By default, HashGuard monitors your Downloads folder. To change this:
 
-You should see:
-```
-[IPC] Server started on 127.0.0.1:54321
-```
+1. Click **"Set Downloads Path"** in the Settings tab
+2. Select the folder you want to monitor
+3. The backend will automatically start watching the new folder
 
-The frontend will automatically start the service if needed.
+### Viewing Scan History
 
-## IPC Protocol
+1. Go to the **Logs** tab
+2. Select a month from the list
+3. Click **"Open Report"** to view detailed scan results
 
-The backend listens on port **54321** for JSON commands from the frontend.
+### Managing Quarantined Files
 
-### Commands
+1. Go to the **Quarantine** tab
+2. View files that were flagged as suspicious
+3. Select a file and click **"Delete"** to permanently remove it
 
-#### Start Scanning
-```json
-{"type": "start_scan"}
-```
-Response: `{"status": "ok", "message": "Scan started"}`
-
-#### Stop Scanning
-```json
-{"type": "stop_scan"}
-```
-Response: `{"status": "ok", "message": "Scan stopped"}`
-
-#### Pause Scanning
-```json
-{"type": "pause_scan"}
-```
-Response: `{"status": "ok", "message": "Scan paused"}`
-
-#### Resume Scanning
-```json
-{"type": "resume_scan"}
-```
-Response: `{"status": "ok", "message": "Scan resumed"}`
-
-#### Set Watch Path
-```json
-{"type": "set_watch_path", "path": "C:\\Downloads"}
-```
-Response: `{"status": "ok", "message": "Watch path changed to C:\\Downloads"}`
-
-#### Get Status
-```json
-{"type": "get_status"}
-```
-Response:
-```json
-{
-  "status": "ok",
-  "scanning": true,
-  "paused": false,
-  "watch_path": "./downloads"
-}
-```
-
-## Verdict Logic
-
-When a file is scanned:
-
-1. **Check cache** - If hash was recently analyzed, use cached verdict
-2. **Query APIs** (in order):
-  - MalwareBazaar (requires API key)
-  - VirusTotal (requires API key)
-  - Custom API (placeholder)
-  - ThreatFox (optional fallback; requires THREATFOX_API_KEY if used)
-3. **Combine verdicts**:
-  - If ANY API says "malicious" → quarantine the file
-  - If all say "clean" → allow the file
-  - If no APIs respond → mark "unknown" and quarantine
-4. **Cache result** - Store verdict for faster future lookups
-
-## File Paths
-
-- **Watch directory**: Configured in `config.yaml` (default: `./downloads`)
-- **Quarantine**: `~/HashGuardDemo/quarantine/`
-- **Logs**: `~/HashGuardDemo/logs/`
-- **Cache DB**: `./cache.sqlite`
-- **Config**: `config.yaml`
-
-## Log Files
-
-Scan results are written to `~/HashGuardDemo/logs/` as JSON files:
-
-```json
-{
-  "timestamp": 1733446234.5678,
-  "iso_time": "2024-12-05T10:30:34.567",
-  "filename": "suspicious.exe",
-  "verdict": "malicious",
-  "hash": "abc123...",
-  "path": "C:\\Downloads\\suspicious.exe",
-  "sources": ["MalwareBazaar"],
-  "error": null
-}
-```
+---
 
 ## Configuration
 
-Edit `config.yaml`:
+Edit `config.yaml` to customize HashGuard's behavior:
 
 ```yaml
-watch_path: ./downloads              # Directory to monitor
-quarantine_path: ./quarantine        # Quarantine directory
-allowed_extensions: [.exe, .zip]     # Only scan these types
-stability_seconds: 3                 # Wait before scanning (let file finish writing)
-debounce_ms: 500                     # Event debounce interval
-worker_count: 4                      # Parallel scan threads
-cache_db: ./cache.sqlite             # Cache database path
+# Watch path - leave empty to use Downloads folder
+watch_path: ""
+
+# File size limits
+min_size_bytes: 65536      # 64 KB minimum (skip tiny files)
+max_size_bytes: 2147483648 # 2 GB maximum
+
+# File types to scan
+allowed_extensions:
+  - .exe
+  - .msi
+  - .zip
+  - .7z
+  - .pdf
+  - .docx
+  - .js
+
+# Paths to ignore
+blocked_paths:
+  - C:\Windows\Temp
+
+# Performance tuning
+worker_count: 2           # Parallel scan workers
+stability_seconds: 3      # Wait for file to finish writing
+debounce_ms: 500          # Ignore rapid duplicate events
+worker_throttle_ms: 75    # CPU throttling between scans
 ```
 
-## API Keys
+**After editing, restart the service:**
+```powershell
+net stop HashGuardService
+net start HashGuardService
+```
 
-### MalwareBazaar
-1. Visit https://malwarebazaar.abuse.ch/
-2. Sign up for free account
-3. Copy API key from dashboard
-4. Add to `.env`:
-   ```
-   MALWAREBAZAAR_API_KEY=your-key
+---
+
+## Service Management
+
+### Check Service Status
+```powershell
+sc query HashGuardService
+```
+
+### Start/Stop Service
+```powershell
+net start HashGuardService
+net stop HashGuardService
+```
+
+### Uninstall Service
+Right-click `uninstall_service.bat` and select "Run as administrator"
+
+Or via command line:
+```powershell
+.\HashGuardBackend.exe remove
+```
+
+---
+
+## Building from Source
+
+### Prerequisites
+
+- Python 3.8 or higher
+- Windows 10/11
+- pip (Python package manager)
+
+### Setup
+
+1. **Clone the repository:**
+   ```powershell
+   git clone https://github.com/Boedepapas/HashGuard.git
+   cd HashGuard
    ```
 
-### VirusTotal
-1. Visit https://www.virustotal.com/
-2. Sign up for free account (higher quota than free tier)
-3. Go to Settings → API Key
-4. Add to `.env`:
-   ```
-   VIRUSTOTAL_API_KEY=your-key
+2. **Create virtual environments and install dependencies:**
+   ```powershell
+   # Backend
+   cd backend
+   python -m venv .venv
+   .\.venv\Scripts\activate
+   pip install -r requirements.txt
+   
+   # Frontend
+   cd ..\frontend
+   python -m venv .venv
+   .\.venv\Scripts\activate
+   pip install -r requirements.txt
+   
+   # PyInstaller (for building)
+   pip install pyinstaller
    ```
 
-## Environment Variables
+3. **Build the executables:**
+   ```powershell
+   cd ..
+   .\build_all.bat
+   ```
 
-All optional - backend works without any configured:
+4. **Output location:**
+   ```
+   dist\HashGuard_Package\
+   ```
+
+### Running Tests
 
 ```powershell
-$env:MALWAREBAZAAR_API_KEY = "your-key"
-$env:VIRUSTOTAL_API_KEY = "your-key"
+cd backend
+.\.venv\Scripts\python.exe -m pytest tests/ -v
 ```
 
-Or create `.env` file (recommended).
+---
 
 ## Troubleshooting
 
-### "No APIs available, defaulting to clean"
-All configured APIs are returning errors. Check:
-- Internet connection
-- API endpoint status
-- Rate limiting (if you've scanned many files)
+### "Service failed to start"
 
-### Port 54321 already in use
-Another instance of HashGuard is running, or another application is using the port.
+- Ensure you ran `install_service.bat` as Administrator
+- Check Windows Event Viewer > Application logs for errors
+- Verify `config.yaml` has valid syntax
 
-### Quarantine permission denied
-The file may be locked by another process. Windows will retry when the file is released.
+### "Cannot connect to backend"
 
-## Development
+- Check if service is running: `sc query HashGuardService`
+- Try restarting the service: `net stop HashGuardService` then `net start HashGuardService`
+- Make sure port 54321 isn't blocked by firewall
 
-### Adding a New API
+### "No files being detected"
 
-1. Create function in `monitor.py`:
-```python
-def MY_API_lookup_hash(hash_hex: str) -> Optional[str]:
-    api_key = os.getenv("MY_API_KEY")
-    if not api_key:
-        return None  # Not configured
-    # ... query API ...
-    return "malicious" or "clean" or None
+- Verify the watch path is set correctly in Settings
+- Check that the file extension is in `allowed_extensions` in `config.yaml`
+- Files under 64KB are skipped by default (adjust `min_size_bytes`)
+
+### "API returns no results"
+
+- Verify your `.env` file contains a valid API key
+- Check your internet connection
+- MalwareBazaar only returns results for known malware hashes
+
+### High CPU usage
+
+- Reduce `worker_count` to 1 in `config.yaml`
+- Increase `worker_throttle_ms` (e.g., to 150)
+- Add frequently-changing folders to `blocked_paths`
+
+---
+
+## Project Structure
+
+```
+HashGuard/
+├── backend/
+│   ├── main.py                 # Backend entry point
+│   ├── hashguard_service.py    # Windows service wrapper
+│   ├── monitor.py              # File monitoring and API calls
+│   ├── ipc.py                  # Frontend-backend communication
+│   ├── database.py             # SQLite scan log storage
+│   ├── service_manager.py      # Service management utilities
+│   ├── backend_helper.py       # Auto-start helper for frontend
+│   ├── config.yaml             # Configuration
+│   ├── requirements.txt        # Python dependencies
+│   └── tests/                  # Unit tests
+│
+├── frontend/
+│   ├── hashguardFrontendv5.py  # GUI application
+│   ├── graphics/               # Icons and images
+│   └── requirements.txt        # Python dependencies
+│
+├── backend_service.spec        # PyInstaller build spec (backend)
+├── frontend_gui.spec           # PyInstaller build spec (frontend)
+├── build_all.bat               # Build script
+├── pytest.ini                  # Test configuration
+├── LICENSE
+└── README.md
 ```
 
-2. Add to `worker_process_item()`:
-```python
-my_verdict = MY_API_lookup_hash(hash_hex)
-if my_verdict:
-    verdicts.append(my_verdict)
-```
+---
 
-3. Update `config.yaml` and `.env.example` with documentation.
+## How It Works
 
-## Performance
+1. **File Detection** - Watchdog monitors the watch folder for new/modified files
+2. **Filtering** - Files are checked against extension whitelist and size limits
+3. **Hashing** - SHA-256 hash is computed for each file
+4. **Cache Check** - Database is checked for previous scan results
+5. **API Query** - Hash is sent to MalwareBazaar API
+6. **Verdict** - File is marked as CLEAN, MALICIOUS, or UNKNOWN
+7. **Action** - Malicious files are moved to quarantine
+8. **Logging** - Result is saved to database and shown in GUI
 
-- **Memory**: ~50MB baseline + cache size
-- **CPU**: Minimal when idle, ~20% per scan worker when active
-- **Disk I/O**: Depends on file sizes and scan frequency
-- **Network**: Only when querying APIs (minimal bandwidth)
-
-## Security Considerations
-
-- API keys should never be in source code
-- Use `.env` file (local, not version controlled)
-- Files are moved (not copied) to quarantine
-- Quarantine files are set to read-only (0o600)
-- All operations logged with timestamps
-- IPC uses localhost only (127.0.0.1:54321)
+---
 
 ## License
 
-[Add your license here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
+## Acknowledgments
 
-For issues or questions, see: https://github.com/Boedepapas/HashGuard
+- [MalwareBazaar](https://bazaar.abuse.ch/) by abuse.ch for malware hash intelligence
+- [Watchdog](https://github.com/gorakhargosh/watchdog) for file system monitoring
+- [PySimpleGUI](https://www.pysimplegui.org/) for the GUI framework
+- [pywin32](https://github.com/mhammond/pywin32) for Windows service support
+
+---
+
+**HashGuard** - A cybersecurity education project

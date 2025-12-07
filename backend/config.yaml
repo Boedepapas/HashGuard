@@ -18,7 +18,7 @@ stability_seconds: 3
 debounce_ms: 500
 worker_count: 2  # Fewer workers to lower CPU usage
 worker_throttle_ms: 75  # Sleep per file to smooth CPU (per worker)
-cache_db: "./cache.sqlite"  # Same folder as application
+cache_db: "./logs/cache.sqlite"  # In logs folder
 ignore_name_regex:
   - '^~\\$'
   - '\\.crdownload$'
@@ -29,23 +29,13 @@ priority_map:
   '.7z': 7
   '.pdf': 5
 
-# API Configuration (OPTIONAL - leave blank to use free API fallback)
-# Get your API keys from:
-# - MalwareBazaar: https://malwarebazaar.abuse.ch/
-# - VirusTotal: https://www.virustotal.com/
+# API Configuration
+# Get your MalwareBazaar API key from: https://malwarebazaar.abuse.ch/
 # Set via environment variables or .env file:
 #   MALWAREBAZAAR_API_KEY=your-key
-#   VIRUSTOTAL_API_KEY=your-key
 
 apis:
   malwarebazaar:
     enabled: true
     url: "https://api.malwarebazaar.abuse.ch/api/v1/"
     # API key loaded from MALWAREBAZAAR_API_KEY environment variable
-  virustotal:
-    enabled: true
-    # API key loaded from VIRUSTOTAL_API_KEY environment variable
-  # Free fallback API (always available, no key needed)
-  free_fallback:
-    enabled: true
-    url: "https://urlhaus-api.abuse.ch/v1/"

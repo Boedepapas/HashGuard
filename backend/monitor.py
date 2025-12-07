@@ -27,11 +27,20 @@ def set_ipc_server(server):
 #-------------------------------------------------------------------------------
 
 import yaml
+import sys
 
 # Load environment variables from .env file
 load_dotenv()
 
-CONFIG_PATH = "config.yaml"
+# Handle PyInstaller bundled mode - look for config.yaml next to executable
+if getattr(sys, 'frozen', False):
+    # Running as compiled executable - use directory where exe is located
+    app_dir = Path(sys.executable).parent
+    CONFIG_PATH = str(app_dir / "config.yaml")
+else:
+    # Running in development
+    CONFIG_PATH = "config.yaml"
+
 with open(CONFIG_PATH, "r") as f:
     CFG = yaml.safe_load(f)
 
@@ -473,67 +482,6 @@ def MB_API_lookup_hash(hash_hex: str) -> Optional[str]:
             return "clean"
     except requests.RequestException as e:
         print(f"MalwareBazaar API error: {e}")
-        return None
-
-
-def VT_API_lookup_hash(hash_hex: str) -> Optional[str]:
-    """
-    VirusTotal API lookup for hash reputation.
-    Returns 'malicious', 'clean', or None (unknown/error).
-    Requires VIRUSTOTAL_API_KEY environment variable.
-    """
-    auth_key = os.getenv("VIRUSTOTAL_API_KEY")
-    if not auth_key:
-        return None  # API key not configured, skip this service
-    
-    url = f"https://www.virustotal.com/api/v3/files/{hash_hex}"
-    headers = {"x-apikey": auth_key}
-    
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-        result = response.json()
-        data = result.get("data", {})
-        attributes = data.get("attributes", {})
-        stats = attributes.get("last_analysis_stats", {})
-        
-        malicious_count = stats.get("malicious", 0)
-        if malicious_count > 0:
-            return "malicious"
-        else:
-            return "clean"
-    except requests.RequestException as e:
-        print(f"VirusTotal API error: {e}")
-        return None
-
-
-def free_API_lookup_hash(hash_hex: str) -> Optional[str]:
-    """
-    ThreatFox lookup (requires THREATFOX_API_KEY).
-    Returns 'malicious' if hash is found, 'clean' otherwise, None on error/missing key.
-    """
-    try:
-        tf_key = os.getenv("THREATFOX_API_KEY")
-        if not tf_key:
-            print("Free API fallback disabled: THREATFOX_API_KEY not set.")
-            return None
-        headers = {"API-KEY": tf_key}
-        resp = requests.post(
-            "https://threatfox-api.abuse.ch/api/v1/",
-            json={"query": "search_hash", "hash": hash_hex},
-            headers=headers,
-            timeout=8,
-        )
-        if resp.status_code == 401:
-            print("Free API fallback unauthorized (ThreatFox). Skipping.")
-            return None
-        resp.raise_for_status()
-        data = resp.json()
-        if data.get("data"):
-            return "malicious"
-        return "clean"
-    except requests.RequestException as e:
-        print(f"Free API fallback unavailable: {e}")
         return None
 
 

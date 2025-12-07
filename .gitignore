@@ -30,7 +30,9 @@ MANIFEST
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
-*.spec
+# *.spec  # Keep spec files for HashGuard build system
+!backend_service.spec
+!frontend_gui.spec
 
 # Installer logs
 pip-log.txt

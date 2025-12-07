@@ -58,17 +58,7 @@ def ensure_backend_running(backend_path: Path = None, verbose: bool = False) -> 
     Returns:
         True if backend is running, False otherwise
     """
-    if backend_path is None:
-        backend_path = get_backend_path()
-    
-    if not backend_path.exists():
-        if verbose:
-            print(f"[BackendHelper] Backend path not found: {backend_path}")
-        return False
-    
-    # Add backend to path so we can import service_manager
-    sys.path.insert(0, str(backend_path))
-    
+    # Try direct import first (works when bundled with PyInstaller)
     try:
         from service_manager import (
             is_backend_reachable,
@@ -76,7 +66,36 @@ def ensure_backend_running(backend_path: Path = None, verbose: bool = False) -> 
             is_service_installed,
             ensure_service_running
         )
+        if verbose:
+            print("[BackendHelper] Using bundled service_manager")
+    except ImportError:
+        # Fall back to dynamic path import (for development)
+        if backend_path is None:
+            backend_path = get_backend_path()
         
+        if not backend_path.exists():
+            if verbose:
+                print(f"[BackendHelper] Backend path not found: {backend_path}")
+            return False
+        
+        # Add backend to path so we can import service_manager
+        sys.path.insert(0, str(backend_path))
+        
+        try:
+            from service_manager import (
+                is_backend_reachable,
+                is_service_running,
+                is_service_installed,
+                ensure_service_running
+            )
+            if verbose:
+                print(f"[BackendHelper] Using service_manager from: {backend_path}")
+        except ImportError as e:
+            if verbose:
+                print(f"[BackendHelper] Failed to import service_manager: {e}")
+            return False
+    
+    try:
         # Quick check if already reachable
         if is_backend_reachable():
             if verbose:
@@ -94,10 +113,6 @@ def ensure_backend_running(backend_path: Path = None, verbose: bool = False) -> 
         
         return success
         
-    except ImportError as e:
-        if verbose:
-            print(f"[BackendHelper] Failed to import service_manager: {e}")
-        return False
     except Exception as e:
         if verbose:
             print(f"[BackendHelper] Error: {e}")
@@ -118,18 +133,35 @@ def check_backend_status(backend_path: Path = None) -> dict:
         - service_running: bool - Is service running
         - status: str - Human readable status
     """
-    if backend_path is None:
-        backend_path = get_backend_path()
-    
-    sys.path.insert(0, str(backend_path))
-    
+    # Try direct import first (works when bundled with PyInstaller)
     try:
         from service_manager import (
             is_backend_reachable,
             is_service_running,
             is_service_installed
         )
+    except ImportError:
+        # Fall back to dynamic path import
+        if backend_path is None:
+            backend_path = get_backend_path()
         
+        sys.path.insert(0, str(backend_path))
+        
+        try:
+            from service_manager import (
+                is_backend_reachable,
+                is_service_running,
+                is_service_installed
+            )
+        except ImportError:
+            return {
+                "reachable": False,
+                "service_installed": False,
+                "service_running": False,
+                "status": "Error: Could not import service_manager",
+            }
+    
+    try:
         reachable = is_backend_reachable()
         installed = is_service_installed()
         running = is_service_running()
@@ -170,14 +202,26 @@ def install_backend_service(backend_path: Path = None, verbose: bool = False) ->
     Returns:
         True if installation successful, False otherwise
     """
-    if backend_path is None:
-        backend_path = get_backend_path()
-    
-    sys.path.insert(0, str(backend_path))
-    
+    # Try direct import first (works when bundled with PyInstaller)
     try:
         from service_manager import install_service
+    except ImportError:
+        if backend_path is None:
+            backend_path = get_backend_path()
         
+        sys.path.insert(0, str(backend_path))
+        
+        try:
+            from service_manager import install_service
+        except ImportError as e:
+            if verbose:
+                print(f"[BackendHelper] Could not import service_manager: {e}")
+            return False
+    
+    try:
+        if backend_path is None:
+            backend_path = get_backend_path()
+            
         service_script = backend_path / "hashguard_service.py"
         success, message = install_service(str(service_script))
         
